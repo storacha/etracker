@@ -1,0 +1,9 @@
+type V1Link link
+
+type PayMeCaveats struct {
+	receipts [V1Link]
+	endpoint URL
+}
+
+type PayMeOk struct {
+}
