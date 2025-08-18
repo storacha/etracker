@@ -3,11 +3,15 @@ package main
 import (
 	"fmt"
 
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	ed25519 "github.com/storacha/go-ucanto/principal/ed25519/signer"
 
 	"github.com/storacha/payme/internal/config"
-	"github.com/storacha/payme/internal/ucanserver"
+	"github.com/storacha/payme/internal/db/egress"
+	"github.com/storacha/payme/internal/server"
+	"github.com/storacha/payme/internal/service"
 )
 
 var startCmd = &cobra.Command{
@@ -15,6 +19,22 @@ var startCmd = &cobra.Command{
 	Short: "Start PayMe server",
 	Args:  cobra.NoArgs,
 	RunE:  startService,
+}
+
+func init() {
+	startCmd.Flags().String(
+		"private-key",
+		"",
+		"Private key the service will use as its identity",
+	)
+	cobra.CheckErr(viper.BindPFlag("private_key", startCmd.Flags().Lookup("private-key")))
+
+	startCmd.Flags().String(
+		"egress-table-name",
+		"",
+		"Name of the DynamoDB table to use for egress records",
+	)
+	cobra.CheckErr(viper.BindPFlag("egress_table_name", startCmd.Flags().Lookup("egress-table-name")))
 }
 
 func startService(cmd *cobra.Command, args []string) error {
@@ -28,10 +48,15 @@ func startService(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("parsing private key: %w", err)
 	}
 
-	ucanServer, err := ucanserver.New(id)
+	svc, err := service.New(id, egress.NewDynamoEgressTable(dynamodb.NewFromConfig(cfg.AWSConfig), cfg.EgressTableName))
 	if err != nil {
-		return fmt.Errorf("creating UCAN server: %w", err)
+		return fmt.Errorf("creating service: %w", err)
 	}
 
-	return ucanServer.ListenAndServe(":8080")
+	server, err := server.New(id, svc)
+	if err != nil {
+		return fmt.Errorf("creating server: %w", err)
+	}
+
+	return server.ListenAndServe(":8080")
 }

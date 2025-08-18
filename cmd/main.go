@@ -47,7 +47,7 @@ func initConfig() {
 	viper.SetEnvPrefix("PAYME")
 
 	if logLevel != "" {
-		ll, err := logging.Parse(logLevel)
+		ll, err := logging.LevelFromString(logLevel)
 		cobra.CheckErr(err)
 		logging.SetAllLoggers(ll)
 	}

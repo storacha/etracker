@@ -5,17 +5,14 @@ go 1.24.4
 require (
 	github.com/aws/aws-sdk-go-v2 v1.38.0
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.20.3
-	github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression v1.8.3
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.47.0
 	github.com/go-playground/validator/v10 v10.27.0
-	github.com/ipfs/go-log/v2 v2.8.0
+	github.com/ipfs/go-log/v2 v2.7.0
 	github.com/ipld/go-ipld-prime v0.21.1-0.20240917223228-6148356a4c2e
-	github.com/multiformats/go-multihash v0.2.3
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/viper v1.8.1
 	github.com/storacha/go-libstoracha v0.2.0
 	github.com/storacha/go-ucanto v0.4.2
-	github.com/storacha/indexing-service v1.9.1
 )
 
 require (
@@ -25,7 +22,9 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.11.3 // indirect
 	github.com/aws/smithy-go v1.22.5 // indirect
+	github.com/benbjohnson/clock v1.3.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/filecoin-project/go-data-segment v0.0.1 // indirect
 	github.com/filecoin-project/go-fil-commcid v0.2.0 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
@@ -59,6 +58,7 @@ require (
 	github.com/ipfs/go-verifcid v0.0.3 // indirect
 	github.com/ipld/go-car v0.6.2 // indirect
 	github.com/ipld/go-codec-dagpb v1.6.0 // indirect
+	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/magiconair/properties v1.8.10 // indirect
@@ -71,6 +71,7 @@ require (
 	github.com/multiformats/go-multiaddr v0.16.0 // indirect
 	github.com/multiformats/go-multibase v0.2.0 // indirect
 	github.com/multiformats/go-multicodec v0.9.1 // indirect
+	github.com/multiformats/go-multihash v0.2.3 // indirect
 	github.com/multiformats/go-varint v0.0.7 // indirect
 	github.com/onsi/ginkgo/v2 v2.23.4 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect

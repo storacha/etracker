@@ -1,9 +1,14 @@
 package config
 
-import "github.com/spf13/viper"
+import (
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/spf13/viper"
+)
 
 type Config struct {
-	PrivateKey string `mapstructure:"private_key" validate:"required"`
+	PrivateKey      string     `mapstructure:"private_key" validate:"required"`
+	AWSConfig       aws.Config `mapstructure:"aws_config"`
+	EgressTableName string     `mapstructure:"egress_table_name" validate:"required"`
 }
 
 func Load() (*Config, error) {
