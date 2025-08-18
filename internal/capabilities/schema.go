@@ -4,17 +4,17 @@ import (
 	_ "embed"
 	"fmt"
 
-	ipldprime "github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/schema"
+	captypes "github.com/storacha/go-libstoracha/capabilities/types"
 )
 
-//go:embed index.ipldsch
+//go:embed payme.ipldsch
 var paymeSchema []byte
 
 var paymeTS = mustLoadTS()
 
 func mustLoadTS() *schema.TypeSystem {
-	ts, err := ipldprime.LoadSchemaBytes(paymeSchema)
+	ts, err := captypes.LoadSchemaBytes(paymeSchema)
 	if err != nil {
 		panic(fmt.Errorf("loading index schema: %w", err))
 	}
