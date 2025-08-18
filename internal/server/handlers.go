@@ -1,4 +1,4 @@
-package ucanserver
+package server
 
 import (
 	"fmt"
@@ -11,20 +11,20 @@ import (
 	"github.com/storacha/payme/internal/build"
 )
 
-func (us *UCANServer) getRootHandler() http.HandlerFunc {
+func (s *Server) getRootHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("💸 payme %s\n", build.Version)))
 		w.Write([]byte("- https://github.com/storacha/payme\n"))
-		w.Write([]byte(fmt.Sprintf("- %s\n", us.id.DID())))
-		if s, ok := us.id.(signer.WrappedSigner); ok {
-			w.Write([]byte(fmt.Sprintf("- %s\n", s.Unwrap().DID())))
+		w.Write([]byte(fmt.Sprintf("- %s\n", s.ucantoSrv.ID().DID())))
+		if ws, ok := s.ucantoSrv.ID().(signer.WrappedSigner); ok {
+			w.Write([]byte(fmt.Sprintf("- %s\n", ws.Unwrap().DID())))
 		}
 	}
 }
 
-func (us *UCANServer) postPayMeHandler() http.HandlerFunc {
+func (s *Server) ucanHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		res, err := us.ucantoSrv.Request(r.Context(), ucanhttp.NewHTTPRequest(r.Body, r.Header))
+		res, err := s.ucantoSrv.Request(r.Context(), ucanhttp.NewHTTPRequest(r.Body, r.Header))
 		if err != nil {
 			log.Errorf("handling UCAN request: %s", err)
 		}
