@@ -6,7 +6,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/storacha/go-ucanto/did"
 	ed25519 "github.com/storacha/go-ucanto/principal/ed25519/signer"
+	"github.com/storacha/go-ucanto/principal/signer"
 
 	"github.com/storacha/payme/internal/config"
 	"github.com/storacha/payme/internal/db/egress"
@@ -22,6 +24,13 @@ var startCmd = &cobra.Command{
 }
 
 func init() {
+	startCmd.Flags().Int(
+		"port",
+		8080,
+		"Port to listen on",
+	)
+	cobra.CheckErr(viper.BindPFlag("port", startCmd.Flags().Lookup("port")))
+
 	startCmd.Flags().String(
 		"private-key",
 		"",
@@ -30,18 +39,18 @@ func init() {
 	cobra.CheckErr(viper.BindPFlag("private_key", startCmd.Flags().Lookup("private-key")))
 
 	startCmd.Flags().String(
+		"did",
+		"",
+		"did:web the service will use as its identity",
+	)
+	cobra.CheckErr(viper.BindPFlag("did", startCmd.Flags().Lookup("did")))
+
+	startCmd.Flags().String(
 		"egress-table-name",
 		"",
 		"Name of the DynamoDB table to use for egress records",
 	)
 	cobra.CheckErr(viper.BindPFlag("egress_table_name", startCmd.Flags().Lookup("egress-table-name")))
-
-	startCmd.Flags().Int(
-		"port",
-		8080,
-		"Port to listen on",
-	)
-	cobra.CheckErr(viper.BindPFlag("port", startCmd.Flags().Lookup("port")))
 }
 
 func startService(cmd *cobra.Command, args []string) error {
@@ -53,6 +62,17 @@ func startService(cmd *cobra.Command, args []string) error {
 	id, err := ed25519.Parse(cfg.PrivateKey)
 	if err != nil {
 		return fmt.Errorf("parsing private key: %w", err)
+	}
+
+	if cfg.DID != "" {
+		d, err := did.Parse(cfg.DID)
+		if err != nil {
+			return fmt.Errorf("parsing DID: %w", err)
+		}
+		id, err = signer.Wrap(id, d)
+		if err != nil {
+			return fmt.Errorf("wrapping server DID: %w", err)
+		}
 	}
 
 	svc, err := service.New(id, egress.NewDynamoEgressTable(dynamodb.NewFromConfig(cfg.AWSConfig), cfg.EgressTableName))

@@ -1,7 +1,7 @@
 {
   "app": "etracker",
-  "privateKeyEnvVar": "",
-  "didEnvVar": "",
+  "privateKeyEnvVar": "PAYME_PRIVATE_KEY",
+  "didEnvVar": "PAYME_DID",
   "port": 8080,
   "js": null,
   "domainBase": "",
