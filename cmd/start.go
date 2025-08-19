@@ -35,6 +35,13 @@ func init() {
 		"Name of the DynamoDB table to use for egress records",
 	)
 	cobra.CheckErr(viper.BindPFlag("egress_table_name", startCmd.Flags().Lookup("egress-table-name")))
+
+	startCmd.Flags().Int(
+		"port",
+		8080,
+		"Port to listen on",
+	)
+	cobra.CheckErr(viper.BindPFlag("port", startCmd.Flags().Lookup("port")))
 }
 
 func startService(cmd *cobra.Command, args []string) error {
@@ -58,5 +65,5 @@ func startService(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("creating server: %w", err)
 	}
 
-	return server.ListenAndServe(":8080")
+	return server.ListenAndServe(fmt.Sprintf(":%d", cfg.Port))
 }

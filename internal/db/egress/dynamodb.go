@@ -3,12 +3,14 @@ package egress
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"net/url"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/google/uuid"
 	"github.com/storacha/go-ucanto/did"
 	"github.com/storacha/go-ucanto/ucan"
 )
@@ -22,26 +24,46 @@ func NewDynamoEgressTable(client *dynamodb.Client, tableName string) *DynamoEgre
 	return &DynamoEgressTable{client, tableName}
 }
 
-// TODO: add keys to improve performance and access patterns
 type egressRecord struct {
-	NodeID     string    `dynamodbav:"nodeID"`
-	Receipts   []string  `dynamodbav:"receipts"`
-	Endpoint   string    `dynamodbav:"endpoint"`
-	ReceivedAt time.Time `dynamodbav:"receivedAt"`
+	// Partition key: "DATE#SHARD" (e.g., "2025-08-18#0")
+	// Where SHARD is a number 0-9 to distribute writes
+	PK string `dynamodbav:"PK"`
+
+	// Sort key: "RECEIVED_AT#NODE_ID#UNIQUE_ID"
+	// This allows sorting by time within each date partition
+	SK string `dynamodbav:"SK"`
+
+	NodeID     string   `dynamodbav:"nodeID"`
+	Receipts   []string `dynamodbav:"receipts"`
+	Endpoint   string   `dynamodbav:"endpoint"`
+	ReceivedAt string   `dynamodbav:"receivedAt"`
 }
 
-func (d *DynamoEgressTable) Record(ctx context.Context, nodeID did.DID, receipts []ucan.Link, endpoint *url.URL) error {
+func newRecord(nodeID did.DID, receipts []ucan.Link, endpoint *url.URL) egressRecord {
+	// TODO: review keys to improve performance and access patterns
+	receivedAt := time.Now().UTC()
+	dateStr := receivedAt.Format("2006-01-02")
+	shard := rand.Intn(10)
+	pk := fmt.Sprintf("%s#%d", dateStr, shard)
+	sk := fmt.Sprintf("%s#%s#%s", dateStr, nodeID, uuid.New())
+
 	rcptsStrs := make([]string, len(receipts))
 	for i, rcpt := range receipts {
 		rcptsStrs[i] = rcpt.String()
 	}
 
-	item, err := attributevalue.MarshalMap(egressRecord{
+	return egressRecord{
+		PK:         pk,
+		SK:         sk,
 		NodeID:     nodeID.String(),
 		Receipts:   rcptsStrs,
 		Endpoint:   endpoint.String(),
-		ReceivedAt: time.Now().UTC(),
-	})
+		ReceivedAt: receivedAt.Format(time.RFC3339),
+	}
+}
+
+func (d *DynamoEgressTable) Record(ctx context.Context, nodeID did.DID, receipts []ucan.Link, endpoint *url.URL) error {
+	item, err := attributevalue.MarshalMap(newRecord(nodeID, receipts, endpoint))
 	if err != nil {
 		return fmt.Errorf("serializing egress record: %w", err)
 	}

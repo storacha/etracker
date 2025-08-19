@@ -1,0 +1,52 @@
+{
+  "app": "etracker",
+  "privateKeyEnvVar": "",
+  "didEnvVar": "",
+  "port": 8080,
+  "js": null,
+  "domainBase": "",
+  "cloudflare": false,
+  "createDB": false,
+  "caches": null,
+  "topics": null,
+  "queues": null,
+  "buckets": null,
+  "secrets": null,
+  "tables": [
+    {
+      "name": "egress-records",
+      "attributes": [
+        {
+          "name": "PK",
+          "type": "S"
+        },
+        {
+          "name": "SK",
+          "type": "S"
+        },
+        {
+          "name": "nodeID",
+          "type": "S"
+        },
+        {
+          "name": "receipts",
+          "type": "SS"
+        },
+        {
+          "name": "endpoint",
+          "type": "S"
+        },
+        {
+          "name": "receivedAt",
+          "type": "S"
+        }
+      ],
+      "hashKey": "PK",
+      "rangeKey": "SK"
+    }
+  ],
+  "networks": [
+    "warm"
+  ],
+  "writeToContainer": false
+}
