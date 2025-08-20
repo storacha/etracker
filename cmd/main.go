@@ -9,11 +9,11 @@ import (
 var log = logging.Logger("cmd")
 
 const shortDescription = `
-PayMe - Egress records for storage nodes
+ETracker - Egress tracking for storage nodes
 `
 
 const longDescription = `
-PayMe records content served by storage nodes so that they can be paid for the corresponding egress.
+ETracker records content served by storage nodes so that they can be paid for the corresponding egress.
 `
 
 var (
@@ -22,7 +22,7 @@ var (
 	logLevel string
 
 	rootCmd = &cobra.Command{
-		Use:   "payme",
+		Use:   "etracker",
 		Short: shortDescription,
 		Long:  longDescription,
 	}
@@ -44,7 +44,7 @@ func init() {
 
 func initConfig() {
 	viper.AutomaticEnv()
-	viper.SetEnvPrefix("PAYME")
+	viper.SetEnvPrefix("ETRACKER")
 
 	if logLevel != "" {
 		ll, err := logging.LevelFromString(logLevel)

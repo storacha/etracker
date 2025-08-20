@@ -5,20 +5,20 @@ help: ## Show this help
 VERSION=$(shell awk -F'"' '/"version":/ {print $$4}' version.json)
 COMMIT=$(shell git rev-parse --short HEAD)
 DATE=$(shell date -u -Iseconds)
-GOFLAGS=-ldflags="-X github.com/storacha/piri/pkg/build.version=$(VERSION) -X github.com/storacha/piri/pkg/build.Commit=$(COMMIT) -X github.com/storacha/piri/pkg/build.Date=$(DATE) -X github.com/storacha/piri/pkg/build.BuiltBy=make"
+GOFLAGS=-ldflags="-X github.com/storacha/etracker/pkg/build.version=$(VERSION) -X github.com/storacha/etracker/pkg/build.Commit=$(COMMIT) -X github.com/storacha/etracker/pkg/build.Date=$(DATE) -X github.com/storacha/etracker/pkg/build.BuiltBy=make"
 TAGS?=
 
-.PHONY: all build payme test clean
+.PHONY: all build etracker test clean
 
 all: build ## Make all targets
 
-build: payme ## Build the service binary
+build: etracker ## Build the service binary
 
-payme: ## Build the service binary
-	go build $(GOFLAGS) $(TAGS) -o ./payme github.com/storacha/payme/cmd
+etracker: ## Build the service binary
+	go build $(GOFLAGS) $(TAGS) -o ./etracker github.com/storacha/etracker/cmd
 
 test: ## Run tests
 	go test -v ./...
 
 clean: ## Clean up artifacts
-	rm -f ./payme
+	rm -f ./etracker

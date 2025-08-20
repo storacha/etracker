@@ -8,16 +8,16 @@ import (
 	"github.com/storacha/go-ucanto/principal/signer"
 	ucanhttp "github.com/storacha/go-ucanto/transport/http"
 
-	"github.com/storacha/payme/internal/build"
+	"github.com/storacha/etracker/internal/build"
 )
 
 func (s *Server) getRootHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(fmt.Sprintf("💸 payme %s\n", build.Version)))
-		w.Write([]byte("- https://github.com/storacha/payme\n"))
-		w.Write([]byte(fmt.Sprintf("- %s\n", s.ucantoSrv.ID().DID())))
+		fmt.Fprintf(w, "💸 etracker %s\n", build.Version)
+		fmt.Fprint(w, "- https://github.com/storacha/etracker\n")
+		fmt.Fprintf(w, "- %s\n", s.ucantoSrv.ID().DID())
 		if ws, ok := s.ucantoSrv.ID().(signer.WrappedSigner); ok {
-			w.Write([]byte(fmt.Sprintf("- %s\n", ws.Unwrap().DID())))
+			fmt.Fprintf(w, "- %s\n", ws.Unwrap().DID())
 		}
 	}
 }

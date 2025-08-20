@@ -7,7 +7,7 @@ import (
 	"github.com/storacha/go-ucanto/principal"
 	ucanto "github.com/storacha/go-ucanto/server"
 
-	"github.com/storacha/payme/internal/service"
+	"github.com/storacha/etracker/internal/service"
 )
 
 var log = logging.Logger("server")

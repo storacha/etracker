@@ -8,8 +8,8 @@ import (
 	userver "github.com/storacha/go-ucanto/server"
 	"github.com/storacha/go-ucanto/ucan"
 
-	"github.com/storacha/payme/internal/capabilities"
-	"github.com/storacha/payme/internal/service"
+	"github.com/storacha/etracker/internal/capabilities"
+	"github.com/storacha/etracker/internal/service"
 )
 
 func serviceMethods(svc *service.Service) []userver.Option {

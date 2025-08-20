@@ -10,15 +10,15 @@ import (
 	ed25519 "github.com/storacha/go-ucanto/principal/ed25519/signer"
 	"github.com/storacha/go-ucanto/principal/signer"
 
-	"github.com/storacha/payme/internal/config"
-	"github.com/storacha/payme/internal/db/egress"
-	"github.com/storacha/payme/internal/server"
-	"github.com/storacha/payme/internal/service"
+	"github.com/storacha/etracker/internal/config"
+	"github.com/storacha/etracker/internal/db/egress"
+	"github.com/storacha/etracker/internal/server"
+	"github.com/storacha/etracker/internal/service"
 )
 
 var startCmd = &cobra.Command{
 	Use:   "start",
-	Short: "Start PayMe server",
+	Short: "Start ETracker",
 	Args:  cobra.NoArgs,
 	RunE:  startService,
 }

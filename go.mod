@@ -1,4 +1,4 @@
-module github.com/storacha/payme
+module github.com/storacha/etracker
 
 go 1.24.4
 

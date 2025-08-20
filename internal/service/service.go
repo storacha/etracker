@@ -7,7 +7,8 @@ import (
 	"github.com/storacha/go-ucanto/did"
 	"github.com/storacha/go-ucanto/principal"
 	"github.com/storacha/go-ucanto/ucan"
-	"github.com/storacha/payme/internal/db/egress"
+
+	"github.com/storacha/etracker/internal/db/egress"
 )
 
 type Service struct {
