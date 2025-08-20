@@ -1,7 +1,0 @@
-type PayMeCaveats struct {
-	receipts [V1Link]
-	endpoint URL
-}
-
-type PayMeOk struct {
-}

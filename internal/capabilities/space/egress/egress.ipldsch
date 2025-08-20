@@ -1,0 +1,14 @@
+type TrackCaveats struct {
+	receipts [CID]
+	endpoint URL
+}
+
+type TrackOk struct {
+}
+
+type ConsolidateCaveats struct {
+	cause V1Link
+}
+
+type ConsolidateOk struct {
+}
