@@ -5,20 +5,24 @@ help: ## Show this help
 VERSION=$(shell awk -F'"' '/"version":/ {print $$4}' version.json)
 COMMIT=$(shell git rev-parse --short HEAD)
 DATE=$(shell date -u -Iseconds)
-GOFLAGS=-ldflags="-X github.com/storacha/etracker/pkg/build.version=$(VERSION) -X github.com/storacha/etracker/pkg/build.Commit=$(COMMIT) -X github.com/storacha/etracker/pkg/build.Date=$(DATE) -X github.com/storacha/etracker/pkg/build.BuiltBy=make"
+GOFLAGS=-ldflags="-X github.com/storacha/etracker/internal/build.version=$(VERSION) -X github.com/storacha/etracker/internal/build.Commit=$(COMMIT) -X github.com/storacha/etracker/internal/build.Date=$(DATE) -X github.com/storacha/etracker/internal/build.BuiltBy=make"
 TAGS?=
 
 .PHONY: all build etracker test clean
 
 all: build ## Make all targets
 
-build: etracker ## Build the service binary
+build: etracker client ## Build service and client binaries
 
 etracker: ## Build the service binary
-	go build $(GOFLAGS) $(TAGS) -o ./etracker github.com/storacha/etracker/cmd
+	go build $(GOFLAGS) $(TAGS) -o ./etracker github.com/storacha/etracker/cmd/etracker
+
+client: ## Build the client binary
+	go build $(GOFLAGS) $(TAGS) -o ./client github.com/storacha/etracker/cmd/client
 
 test: ## Run tests
 	go test -v ./...
 
 clean: ## Clean up artifacts
 	rm -f ./etracker
+	rm -f ./client
