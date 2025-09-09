@@ -30,7 +30,7 @@
         },
         {
           "name": "receipts",
-          "type": "SS"
+          "type": "S"
         },
         {
           "name": "endpoint",

@@ -9,5 +9,5 @@ import (
 )
 
 type EgressTable interface {
-	Record(ctx context.Context, nodeID did.DID, receipts []ucan.Link, endpoint *url.URL) error
+	Record(ctx context.Context, nodeID did.DID, receipt ucan.Link, endpoint *url.URL) error
 }

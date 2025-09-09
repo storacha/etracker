@@ -1,8 +1,6 @@
 package egress
 
 import (
-	"net/url"
-
 	"github.com/ipld/go-ipld-prime/datamodel"
 	captypes "github.com/storacha/go-libstoracha/capabilities/types"
 	"github.com/storacha/go-ucanto/core/ipld"
@@ -16,8 +14,7 @@ import (
 const ConsolidateAbility = "space/egress/consolidate"
 
 type ConsolidateCaveats struct {
-	Receipts []ucan.Link
-	Endpoint *url.URL
+	Cause ucan.Link
 }
 
 func (cc ConsolidateCaveats) ToIPLD() (datamodel.Node, error) {
@@ -26,7 +23,13 @@ func (cc ConsolidateCaveats) ToIPLD() (datamodel.Node, error) {
 
 var ConsolidateCaveatsReader = schema.Struct[ConsolidateCaveats](ConsolidateCaveatsType(), nil, captypes.Converters...)
 
+type Error struct {
+	Receipt ucan.Link
+	Error   string
+}
+
 type ConsolidateOk struct {
+	Errors []Error
 }
 
 func (co ConsolidateOk) ToIPLD() (datamodel.Node, error) {

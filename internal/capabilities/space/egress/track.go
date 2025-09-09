@@ -17,7 +17,7 @@ import (
 const TrackAbility = "space/egress/track"
 
 type TrackCaveats struct {
-	Receipts []ucan.Link
+	Receipts ucan.Link
 	Endpoint *url.URL
 }
 
