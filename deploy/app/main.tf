@@ -78,22 +78,6 @@ module "app" {
           name = "SK"
           type = "S"
         },
-        {
-          name = "nodeID"
-          type = "S"
-        },
-        {
-          name = "receipts"
-          type = "SS"
-        },
-        {
-          name = "endpoint"
-          type = "S"
-        },
-        {
-          name = "receivedAt"
-          type = "S"
-        },
       ]
       hash_key = "PK"
       range_key ="SK"
