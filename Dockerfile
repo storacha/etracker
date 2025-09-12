@@ -6,7 +6,12 @@ COPY go.* .
 RUN go mod download
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-w -s" -o etracker ./cmd/etracker
+ARG VERSION
+ARG DATE
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 \
+	go build -ldflags="-w -s -X github.com/storacha/etracker/internal/build.version=$VERSION -X github.com/storacha/etracker/internal/build.Date=$DATE -X github.com/storacha/etracker/internal/build.BuiltBy=docker" \
+    -o etracker github.com/storacha/etracker/cmd/etracker
 
 FROM scratch
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/

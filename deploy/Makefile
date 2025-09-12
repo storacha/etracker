@@ -7,6 +7,9 @@ else
 	endif
 endif
 
+VERSION=$(shell awk -F'"' '/"version":/ {print $$4}' ../version.json)
+DATE=$(shell date -u -Iseconds)
+
 ECR_URI=$(TF_VAR_allowed_account_id).dkr.ecr.us-west-2.amazonaws.com
 REPLICATED_ECR_URI=$(TF_VAR_allowed_account_id).dkr.ecr.$(TF_VAR_region).amazonaws.com
 IMAGE_TAG_BASE=$(ECR_URI)/$(TF_VAR_app)-ecr:$(TF_WORKSPACE)
@@ -41,7 +44,7 @@ docker-login:
 	./esh -s /bin/bash -o .env.production.local .env.production.local.tpl 
 
 docker-build: docker-login .env.production.local
-	docker buildx build --platform linux/arm64 -t $(IMAGE_TAG_BASE)-latest --load ..
+	docker buildx build --platform linux/arm64 -t $(IMAGE_TAG_BASE)-latest --load --build-arg VERSION=$(VERSION) --build-arg DATE=$(DATE) ..
 
 format-filter ="{{ .Id }}"
 

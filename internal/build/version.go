@@ -16,9 +16,6 @@ var (
 	// UserAgent is the user agent used for HTTP requests
 	UserAgent string
 
-	// Commit is the git commit hash
-	Commit = "unknown"
-
 	// Date is the build date in UTC
 	Date = "unknown"
 

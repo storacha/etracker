@@ -8,5 +8,4 @@ deploy/.tfworkspace
 deploy/app
 deploy/shared
 .github
-.git
 .gitignore

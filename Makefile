@@ -3,9 +3,8 @@ help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "    \033[36m%-20s\033[93m %s\n", $$1, $$2}'
 
 VERSION=$(shell awk -F'"' '/"version":/ {print $$4}' version.json)
-COMMIT=$(shell git rev-parse --short HEAD)
 DATE=$(shell date -u -Iseconds)
-GOFLAGS=-ldflags="-X github.com/storacha/etracker/internal/build.version=$(VERSION) -X github.com/storacha/etracker/internal/build.Commit=$(COMMIT) -X github.com/storacha/etracker/internal/build.Date=$(DATE) -X github.com/storacha/etracker/internal/build.BuiltBy=make"
+GOFLAGS=-ldflags="-X github.com/storacha/etracker/internal/build.version=$(VERSION) -X github.com/storacha/etracker/internal/build.Date=$(DATE) -X github.com/storacha/etracker/internal/build.BuiltBy=make"
 TAGS?=
 
 .PHONY: all build etracker test clean
