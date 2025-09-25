@@ -12,7 +12,7 @@ require (
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/viper v1.8.1
 	github.com/storacha/go-libstoracha v0.2.7
-	github.com/storacha/go-ucanto v0.5.0
+	github.com/storacha/go-ucanto v0.6.4
 )
 
 require (

@@ -24,7 +24,7 @@ func (s *Server) getRootHandler() http.HandlerFunc {
 
 func (s *Server) ucanHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		res, err := s.ucantoSrv.Request(r.Context(), ucanhttp.NewHTTPRequest(r.Body, r.Header))
+		res, err := s.ucantoSrv.Request(r.Context(), ucanhttp.NewRequest(r.Body, r.Header))
 		if err != nil {
 			log.Errorf("handling UCAN request: %s", err)
 		}

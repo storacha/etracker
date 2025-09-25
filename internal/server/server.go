@@ -13,7 +13,7 @@ import (
 var log = logging.Logger("server")
 
 type Server struct {
-	ucantoSrv ucanto.ServerView
+	ucantoSrv ucanto.ServerView[ucanto.Service]
 }
 
 func New(id principal.Signer, svc *service.Service) (*Server, error) {
