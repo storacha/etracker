@@ -7,6 +7,7 @@ import (
 	"github.com/storacha/go-ucanto/principal"
 	ucanto "github.com/storacha/go-ucanto/server"
 
+	"github.com/storacha/etracker/internal/presets"
 	"github.com/storacha/etracker/internal/service"
 )
 
@@ -17,7 +18,15 @@ type Server struct {
 }
 
 func New(id principal.Signer, svc *service.Service) (*Server, error) {
-	ucantoSrv, err := ucanto.NewServer(id, serviceMethods(svc)...)
+	opts := serviceMethods(svc)
+
+	presolver, err := presets.NewPresetResolver()
+	if err != nil {
+		return nil, err
+	}
+	opts = append(opts, ucanto.WithPrincipalResolver(presolver.ResolveDIDKey))
+
+	ucantoSrv, err := ucanto.NewServer(id, opts...)
 	if err != nil {
 		return nil, err
 	}
