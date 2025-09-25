@@ -9,11 +9,10 @@ require (
 	github.com/go-playground/validator/v10 v10.27.0
 	github.com/google/uuid v1.6.0
 	github.com/ipfs/go-log/v2 v2.7.0
-	github.com/ipld/go-ipld-prime v0.21.1-0.20240917223228-6148356a4c2e
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/viper v1.8.1
-	github.com/storacha/go-libstoracha v0.2.0
-	github.com/storacha/go-ucanto v0.4.2
+	github.com/storacha/go-libstoracha v0.2.7
+	github.com/storacha/go-ucanto v0.5.0
 )
 
 require (
@@ -58,6 +57,7 @@ require (
 	github.com/ipfs/go-verifcid v0.0.3 // indirect
 	github.com/ipld/go-car v0.6.2 // indirect
 	github.com/ipld/go-codec-dagpb v1.6.0 // indirect
+	github.com/ipld/go-ipld-prime v0.21.1-0.20240917223228-6148356a4c2e // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
