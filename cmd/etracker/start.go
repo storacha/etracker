@@ -56,7 +56,7 @@ func init() {
 }
 
 func startService(cmd *cobra.Command, args []string) error {
-	cfg, err := config.Load()
+	cfg, err := config.Load(cmd.Context())
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
 	}
