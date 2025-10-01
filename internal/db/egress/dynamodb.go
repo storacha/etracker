@@ -35,13 +35,14 @@ type egressRecord struct {
 	// This allows sorting by time within each date partition
 	SK string `dynamodbav:"SK"`
 
+	Invocation string `dynamodbav:"invocation"`
 	NodeID     string `dynamodbav:"nodeID"`
 	Receipts   string `dynamodbav:"receipts"`
 	Endpoint   string `dynamodbav:"endpoint"`
 	ReceivedAt string `dynamodbav:"receivedAt"`
 }
 
-func newRecord(nodeID did.DID, receipts ucan.Link, endpoint *url.URL) egressRecord {
+func newRecord(invocation ucan.Link, nodeID did.DID, receipts ucan.Link, endpoint *url.URL) egressRecord {
 	// TODO: review keys to improve performance and access patterns
 	receivedAt := time.Now().UTC()
 	dateStr := receivedAt.Format("2006-01-02")
@@ -52,6 +53,7 @@ func newRecord(nodeID did.DID, receipts ucan.Link, endpoint *url.URL) egressReco
 	return egressRecord{
 		PK:         pk,
 		SK:         sk,
+		Invocation: invocation.String(),
 		NodeID:     nodeID.String(),
 		Receipts:   receipts.String(),
 		Endpoint:   endpoint.String(),
@@ -59,8 +61,8 @@ func newRecord(nodeID did.DID, receipts ucan.Link, endpoint *url.URL) egressReco
 	}
 }
 
-func (d *DynamoEgressTable) Record(ctx context.Context, nodeID did.DID, receipts ucan.Link, endpoint *url.URL) error {
-	item, err := attributevalue.MarshalMap(newRecord(nodeID, receipts, endpoint))
+func (d *DynamoEgressTable) Record(ctx context.Context, invocation ucan.Link, nodeID did.DID, receipts ucan.Link, endpoint *url.URL) error {
+	item, err := attributevalue.MarshalMap(newRecord(invocation, nodeID, receipts, endpoint))
 	if err != nil {
 		return fmt.Errorf("serializing egress record: %w", err)
 	}
