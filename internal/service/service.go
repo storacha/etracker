@@ -20,6 +20,6 @@ func New(id principal.Signer, egressTable egress.EgressTable) (*Service, error) 
 	return &Service{id: id, egressTable: egressTable}, nil
 }
 
-func (s *Service) Record(ctx context.Context, invocation ucan.Link, nodeDID did.DID, receipts ucan.Link, endpoint *url.URL) error {
-	return s.egressTable.Record(ctx, invocation, nodeDID, receipts, endpoint)
+func (s *Service) Record(ctx context.Context, cause ucan.Link, nodeDID did.DID, receipts ucan.Link, endpoint *url.URL) error {
+	return s.egressTable.Record(ctx, cause, nodeDID, receipts, endpoint)
 }
