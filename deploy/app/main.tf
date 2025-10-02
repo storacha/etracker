@@ -82,6 +82,21 @@ module "app" {
       hash_key = "PK"
       range_key ="SK"
     },
+    {
+      name = "consolidated"
+      attributes = [
+        {
+          name = "NodeDID"
+          type = "S"
+        },
+        {
+          name = "ReceiptsBatchCID"
+          type = "S"
+        },
+      ]
+      hash_key = "NodeDID"
+      range_key = "ReceiptsBatchCID"
+    },
   ]
   buckets = [
   ]
