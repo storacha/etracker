@@ -41,11 +41,12 @@ type egressRecord struct {
 	NodeID     string `dynamodbav:"nodeID"`
 	Receipts   string `dynamodbav:"receipts"`
 	Endpoint   string `dynamodbav:"endpoint"`
+	Cause      string `dynamodbav:"cause"`
 	ReceivedAt string `dynamodbav:"receivedAt"`
 	Processed  bool   `dynamodbav:"processed"`
 }
 
-func newRecord(nodeID did.DID, receipts ucan.Link, endpoint *url.URL) egressRecord {
+func newRecord(nodeID did.DID, receipts ucan.Link, endpoint *url.URL, cause ucan.Link) egressRecord {
 	// TODO: review keys to improve performance and access patterns
 	receivedAt := time.Now().UTC()
 	dateStr := receivedAt.Format("2006-01-02")
@@ -59,13 +60,14 @@ func newRecord(nodeID did.DID, receipts ucan.Link, endpoint *url.URL) egressReco
 		NodeID:     nodeID.String(),
 		Receipts:   receipts.String(),
 		Endpoint:   endpoint.String(),
+		Cause:      cause.String(),
 		ReceivedAt: receivedAt.Format(time.RFC3339),
 		Processed:  false,
 	}
 }
 
-func (d *DynamoEgressTable) Record(ctx context.Context, nodeID did.DID, receipts ucan.Link, endpoint *url.URL) error {
-	item, err := attributevalue.MarshalMap(newRecord(nodeID, receipts, endpoint))
+func (d *DynamoEgressTable) Record(ctx context.Context, nodeID did.DID, receipts ucan.Link, endpoint *url.URL, cause ucan.Link) error {
+	item, err := attributevalue.MarshalMap(newRecord(nodeID, receipts, endpoint, cause))
 	if err != nil {
 		return fmt.Errorf("serializing egress record: %w", err)
 	}
@@ -128,12 +130,19 @@ func (d *DynamoEgressTable) GetUnprocessed(ctx context.Context, limit int) ([]Eg
 				return nil, fmt.Errorf("parsing received at time: %w", err)
 			}
 
+			cause, err := cid.Decode(record.Cause)
+			if err != nil {
+				return nil, fmt.Errorf("parsing cause CID: %w", err)
+			}
+			causeLink := cidlink.Link{Cid: cause}
+
 			allRecords = append(allRecords, EgressRecord{
 				PK:         record.PK,
 				SK:         record.SK,
 				NodeID:     nodeID,
 				Receipts:   receipts,
 				Endpoint:   endpoint,
+				Cause:      causeLink,
 				ReceivedAt: receivedAt,
 				Processed:  record.Processed,
 			})

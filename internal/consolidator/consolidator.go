@@ -10,10 +10,14 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/storacha/go-libstoracha/capabilities/space/content"
+	capegress "github.com/storacha/go-libstoracha/capabilities/space/egress"
 	"github.com/storacha/go-ucanto/core/car"
+	"github.com/storacha/go-ucanto/core/delegation"
 	"github.com/storacha/go-ucanto/core/receipt"
+	"github.com/storacha/go-ucanto/core/receipt/ran"
 	"github.com/storacha/go-ucanto/core/result"
 	fdm "github.com/storacha/go-ucanto/core/result/failure/datamodel"
+	"github.com/storacha/go-ucanto/principal"
 
 	"github.com/storacha/etracker/internal/db/consolidated"
 	"github.com/storacha/etracker/internal/db/egress"
@@ -22,6 +26,7 @@ import (
 var log = logging.Logger("consolidator")
 
 type Consolidator struct {
+	id                principal.Signer
 	egressTable       egress.EgressTable
 	consolidatedTable consolidated.ConsolidatedTable
 	httpClient        *http.Client
@@ -30,8 +35,9 @@ type Consolidator struct {
 	stopCh            chan struct{}
 }
 
-func New(egressTable egress.EgressTable, consolidatedTable consolidated.ConsolidatedTable, interval time.Duration, batchSize int) *Consolidator {
+func New(id principal.Signer, egressTable egress.EgressTable, consolidatedTable consolidated.ConsolidatedTable, interval time.Duration, batchSize int) *Consolidator {
 	return &Consolidator{
+		id:                id,
 		egressTable:       egressTable,
 		consolidatedTable: consolidatedTable,
 		httpClient:        &http.Client{Timeout: 30 * time.Second},
@@ -84,6 +90,23 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 
 	// Process each record (each record represents a batch of receipts for a single node)
 	for _, record := range records {
+		// According to the spec, consolidation happens as a result of a `space/egress/consolidate` invocation.
+		// Since the service is invoking it on itself, we will generate it here.
+		// Is this acceptable or should we create and register a handler and follow the full go-ucanto flow instead?
+		inv, err := capegress.Consolidate.Invoke(
+			c.id,
+			c.id,
+			c.id.DID().String(),
+			capegress.ConsolidateCaveats{
+				Cause: record.Cause,
+			},
+			delegation.WithNoExpiration(),
+		)
+		if err != nil {
+			log.Errorf("generating consolidation invocation: %w", err)
+			continue
+		}
+
 		// Fetch receipts from the endpoint
 		receipts, err := c.fetchReceipts(ctx, record)
 		if err != nil {
@@ -119,6 +142,15 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 			log.Errorf("Failed to add consolidated record for node %s, batch %s: %v", record.NodeID, record.Receipts, err)
 			continue
 		}
+
+		// Issue the receipt for the consolidation operation
+		// TODO: store in the DB
+		_, err = receipt.Issue(c.id, result.Ok[capegress.ConsolidateOk, capegress.ConsolidateError](capegress.ConsolidateOk{}), ran.FromInvocation(inv))
+		if err != nil {
+			log.Errorf("Failed to issue consolidation receipt: %v", err)
+			continue
+		}
+
 		log.Infof("Consolidated %d bytes for node %s (batch %s)", totalBytes, record.NodeID, record.Receipts)
 	}
 
