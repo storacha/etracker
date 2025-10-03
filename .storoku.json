@@ -27,6 +27,21 @@
       ],
       "hashKey": "PK",
       "rangeKey": "SK"
+    },
+    {
+      "name": "consolidated-records",
+      "attributes": [
+        {
+          "name": "NodeDID",
+          "type": "S"
+        },
+        {
+          "name": "ReceiptsBatchCID",
+          "type": "S"
+        }
+      ],
+      "hashKey": "NodeDID",
+      "rangeKey": "ReceiptsBatchCID"
     }
   ],
   "networks": [

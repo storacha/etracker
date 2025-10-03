@@ -83,7 +83,7 @@ module "app" {
       range_key ="SK"
     },
     {
-      name = "consolidated"
+      name = "consolidated-records"
       attributes = [
         {
           name = "NodeDID"
