@@ -10,7 +10,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/google/uuid"
+	"github.com/ipfs/go-cid"
+	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/storacha/go-ucanto/did"
 	"github.com/storacha/go-ucanto/ucan"
 )
@@ -40,6 +43,7 @@ type egressRecord struct {
 	Endpoint   string `dynamodbav:"endpoint"`
 	Cause      string `dynamodbav:"cause"`
 	ReceivedAt string `dynamodbav:"receivedAt"`
+	Processed  bool   `dynamodbav:"proc"`
 }
 
 func newRecord(nodeID did.DID, receipts ucan.Link, endpoint *url.URL, cause ucan.Link) egressRecord {
@@ -49,15 +53,17 @@ func newRecord(nodeID did.DID, receipts ucan.Link, endpoint *url.URL, cause ucan
 	shard := rand.Intn(10)
 	pk := fmt.Sprintf("%s#%d", dateStr, shard)
 	sk := fmt.Sprintf("%s#%s#%s", dateStr, nodeID, uuid.New())
+	endpointStr, _ := url.PathUnescape(endpoint.String())
 
 	return egressRecord{
 		PK:         pk,
 		SK:         sk,
 		NodeID:     nodeID.String(),
 		Receipts:   receipts.String(),
-		Endpoint:   endpoint.String(),
+		Endpoint:   endpointStr,
 		Cause:      cause.String(),
 		ReceivedAt: receivedAt.Format(time.RFC3339),
+		Processed:  false,
 	}
 }
 
@@ -72,6 +78,96 @@ func (d *DynamoEgressTable) Record(ctx context.Context, nodeID did.DID, receipts
 	})
 	if err != nil {
 		return fmt.Errorf("storing egress record: %w", err)
+	}
+	return nil
+}
+
+func (d *DynamoEgressTable) GetUnprocessed(ctx context.Context, limit int) ([]EgressRecord, error) {
+	// Scan all shards for the current date for unprocessed records
+	today := time.Now().UTC().Format("2006-01-02")
+	var allRecords []EgressRecord
+
+	for shard := range 10 {
+		pk := fmt.Sprintf("%s#%d", today, shard)
+
+		result, err := d.client.Query(ctx, &dynamodb.QueryInput{
+			TableName:              aws.String(d.tableName),
+			KeyConditionExpression: aws.String("PK = :pk"),
+			FilterExpression:       aws.String("proc = :false"),
+			ExpressionAttributeValues: map[string]types.AttributeValue{
+				":pk":    &types.AttributeValueMemberS{Value: pk},
+				":false": &types.AttributeValueMemberBOOL{Value: false},
+			},
+			Limit: aws.Int32(int32(limit)),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("querying unprocessed records for shard %d: %w", shard, err)
+		}
+
+		for _, item := range result.Items {
+			var record egressRecord
+			if err := attributevalue.UnmarshalMap(item, &record); err != nil {
+				return nil, fmt.Errorf("unmarshaling egress record: %w", err)
+			}
+
+			nodeID, err := did.Parse(record.NodeID)
+			if err != nil {
+				return nil, fmt.Errorf("parsing node DID: %w", err)
+			}
+
+			c, err := cid.Decode(record.Receipts)
+			if err != nil {
+				return nil, fmt.Errorf("parsing receipts CID: %w", err)
+			}
+			receipts := cidlink.Link{Cid: c}
+
+			receivedAt, err := time.Parse(time.RFC3339, record.ReceivedAt)
+			if err != nil {
+				return nil, fmt.Errorf("parsing received at time: %w", err)
+			}
+
+			cause, err := cid.Decode(record.Cause)
+			if err != nil {
+				return nil, fmt.Errorf("parsing cause CID: %w", err)
+			}
+			causeLink := cidlink.Link{Cid: cause}
+
+			allRecords = append(allRecords, EgressRecord{
+				PK:         record.PK,
+				SK:         record.SK,
+				NodeID:     nodeID,
+				Receipts:   receipts,
+				Endpoint:   record.Endpoint,
+				Cause:      causeLink,
+				ReceivedAt: receivedAt,
+				Processed:  record.Processed,
+			})
+
+			if len(allRecords) >= limit {
+				return allRecords, nil
+			}
+		}
+	}
+
+	return allRecords, nil
+}
+
+func (d *DynamoEgressTable) MarkAsProcessed(ctx context.Context, records []EgressRecord) error {
+	for _, record := range records {
+		_, err := d.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+			TableName: aws.String(d.tableName),
+			Key: map[string]types.AttributeValue{
+				"PK": &types.AttributeValueMemberS{Value: record.PK},
+				"SK": &types.AttributeValueMemberS{Value: record.SK},
+			},
+			UpdateExpression: aws.String("SET proc = :true"),
+			ExpressionAttributeValues: map[string]types.AttributeValue{
+				":true": &types.AttributeValueMemberBOOL{Value: true},
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("marking record as processed (PK=%s, SK=%s): %w", record.PK, record.SK, err)
+		}
 	}
 	return nil
 }
