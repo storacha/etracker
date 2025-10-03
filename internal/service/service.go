@@ -9,6 +9,7 @@ import (
 	"github.com/storacha/go-ucanto/ucan"
 
 	"github.com/storacha/etracker/internal/db/egress"
+	"github.com/storacha/etracker/internal/metrics"
 )
 
 type Service struct {
@@ -21,5 +22,11 @@ func New(id principal.Signer, egressTable egress.EgressTable) (*Service, error) 
 }
 
 func (s *Service) Record(ctx context.Context, nodeDID did.DID, receipts ucan.Link, endpoint *url.URL, cause ucan.Link) error {
-	return s.egressTable.Record(ctx, nodeDID, receipts, endpoint, cause)
+	if err := s.egressTable.Record(ctx, nodeDID, receipts, endpoint, cause); err != nil {
+		return err
+	}
+
+	metrics.TrackedBatchesPerNode.WithLabelValues(nodeDID.String()).Inc()
+
+	return nil
 }

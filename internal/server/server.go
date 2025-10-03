@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/storacha/go-ucanto/principal"
 	ucanto "github.com/storacha/go-ucanto/server"
 
@@ -40,6 +41,7 @@ func (s *Server) ListenAndServe(addr string) error {
 	mux.HandleFunc("GET /", s.getRootHandler())
 	mux.HandleFunc("POST /", s.ucanHandler())
 	mux.HandleFunc("GET /receipts/{cid}", s.getReceiptsHandler())
+	mux.Handle("GET /metrics", promhttp.Handler())
 
 	log.Infof("Listening on %s", addr)
 	return http.ListenAndServe(addr, mux)

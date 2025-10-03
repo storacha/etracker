@@ -21,6 +21,7 @@ import (
 
 	"github.com/storacha/etracker/internal/db/consolidated"
 	"github.com/storacha/etracker/internal/db/egress"
+	"github.com/storacha/etracker/internal/metrics"
 )
 
 var log = logging.Logger("consolidator")
@@ -142,6 +143,9 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 			log.Errorf("Failed to add consolidated record for node %s, batch %s: %v", record.NodeID, record.Receipts, err)
 			continue
 		}
+
+		// Increment consolidated bytes counter for this node
+		metrics.ConsolidatedBytesPerNode.WithLabelValues(record.NodeID.String()).Add(float64(totalBytes))
 
 		// Issue the receipt for the consolidation operation
 		// TODO: store in the DB
