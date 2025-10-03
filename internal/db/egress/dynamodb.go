@@ -43,7 +43,7 @@ type egressRecord struct {
 	Endpoint   string `dynamodbav:"endpoint"`
 	Cause      string `dynamodbav:"cause"`
 	ReceivedAt string `dynamodbav:"receivedAt"`
-	Processed  bool   `dynamodbav:"processed"`
+	Processed  bool   `dynamodbav:"proc"`
 }
 
 func newRecord(nodeID did.DID, receipts ucan.Link, endpoint *url.URL, cause ucan.Link) egressRecord {
@@ -93,7 +93,7 @@ func (d *DynamoEgressTable) GetUnprocessed(ctx context.Context, limit int) ([]Eg
 		result, err := d.client.Query(ctx, &dynamodb.QueryInput{
 			TableName:              aws.String(d.tableName),
 			KeyConditionExpression: aws.String("PK = :pk"),
-			FilterExpression:       aws.String("attribute_not_exists(processed) OR processed = :false"),
+			FilterExpression:       aws.String("proc = :false"),
 			ExpressionAttributeValues: map[string]types.AttributeValue{
 				":pk":    &types.AttributeValueMemberS{Value: pk},
 				":false": &types.AttributeValueMemberBOOL{Value: false},
@@ -160,7 +160,7 @@ func (d *DynamoEgressTable) MarkAsProcessed(ctx context.Context, records []Egres
 				"PK": &types.AttributeValueMemberS{Value: record.PK},
 				"SK": &types.AttributeValueMemberS{Value: record.SK},
 			},
-			UpdateExpression: aws.String("SET processed = :true"),
+			UpdateExpression: aws.String("SET proc = :true"),
 			ExpressionAttributeValues: map[string]types.AttributeValue{
 				":true": &types.AttributeValueMemberBOOL{Value: true},
 			},
