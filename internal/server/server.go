@@ -39,6 +39,7 @@ func (s *Server) ListenAndServe(addr string) error {
 
 	mux.HandleFunc("GET /", s.getRootHandler())
 	mux.HandleFunc("POST /track", s.ucanHandler())
+	mux.HandleFunc("GET /receipts/{cid}", s.getReceiptsHandler())
 
 	log.Infof("Listening on %s", addr)
 	return http.ListenAndServe(addr, mux)
