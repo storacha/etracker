@@ -53,13 +53,14 @@ func newRecord(nodeID did.DID, receipts ucan.Link, endpoint *url.URL, cause ucan
 	shard := rand.Intn(10)
 	pk := fmt.Sprintf("%s#%d", dateStr, shard)
 	sk := fmt.Sprintf("%s#%s#%s", dateStr, nodeID, uuid.New())
+	endpointStr, _ := url.PathUnescape(endpoint.String())
 
 	return egressRecord{
 		PK:         pk,
 		SK:         sk,
 		NodeID:     nodeID.String(),
 		Receipts:   receipts.String(),
-		Endpoint:   endpoint.String(),
+		Endpoint:   endpointStr,
 		Cause:      cause.String(),
 		ReceivedAt: receivedAt.Format(time.RFC3339),
 		Processed:  false,
@@ -120,11 +121,6 @@ func (d *DynamoEgressTable) GetUnprocessed(ctx context.Context, limit int) ([]Eg
 			}
 			receipts := cidlink.Link{Cid: c}
 
-			endpoint, err := url.Parse(record.Endpoint)
-			if err != nil {
-				return nil, fmt.Errorf("parsing endpoint URL: %w", err)
-			}
-
 			receivedAt, err := time.Parse(time.RFC3339, record.ReceivedAt)
 			if err != nil {
 				return nil, fmt.Errorf("parsing received at time: %w", err)
@@ -141,7 +137,7 @@ func (d *DynamoEgressTable) GetUnprocessed(ctx context.Context, limit int) ([]Eg
 				SK:         record.SK,
 				NodeID:     nodeID,
 				Receipts:   receipts,
-				Endpoint:   endpoint,
+				Endpoint:   record.Endpoint,
 				Cause:      causeLink,
 				ReceivedAt: receivedAt,
 				Processed:  record.Processed,

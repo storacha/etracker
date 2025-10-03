@@ -166,7 +166,7 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 
 func (c *Consolidator) fetchReceipts(ctx context.Context, record egress.EgressRecord) ([]receipt.AnyReceipt, error) {
 	// Substitute {cid} in the endpoint URL with the receipts CID
-	batchURLStr := record.Endpoint.String()
+	batchURLStr := record.Endpoint
 	batchCID := record.Receipts.String()
 
 	// Handle both {cid} and :cid patterns
@@ -177,6 +177,8 @@ func (c *Consolidator) fetchReceipts(ctx context.Context, record egress.EgressRe
 	if err != nil {
 		return nil, fmt.Errorf("parsing batch URL: %w", err)
 	}
+
+	log.Debugf("Fetching receipts from %s", batchURL.String())
 
 	req, err := http.NewRequestWithContext(ctx, "GET", batchURL.String(), nil)
 	if err != nil {

@@ -14,7 +14,7 @@ type EgressRecord struct {
 	SK         string
 	NodeID     did.DID
 	Receipts   ucan.Link
-	Endpoint   *url.URL
+	Endpoint   string
 	Cause      ucan.Link
 	ReceivedAt time.Time
 	Processed  bool
