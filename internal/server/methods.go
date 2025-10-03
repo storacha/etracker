@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/storacha/go-libstoracha/capabilities/space/egress"
+	"github.com/storacha/go-ucanto/core/delegation"
 	"github.com/storacha/go-ucanto/core/invocation"
 	"github.com/storacha/go-ucanto/core/receipt/fx"
 	"github.com/storacha/go-ucanto/core/result"
@@ -38,11 +39,27 @@ func ucanTrackHandler(svc *service.Service) func(
 		receipts := cap.Nb().Receipts
 		endpoint := cap.Nb().Endpoint
 
-		err := svc.Record(ctx, nodeDID, receipts, endpoint)
+		err := svc.Record(ctx, nodeDID, receipts, endpoint, inv.Link())
 		if err != nil {
 			return result.Error[egress.TrackOk, egress.TrackError](egress.NewTrackError(err.Error())), nil, nil
 		}
 
-		return result.Ok[egress.TrackOk, egress.TrackError](egress.TrackOk{}), nil, nil
+		// produce space/egress/consolidate effect by invoking on the service itself
+		consolidateInv, err := egress.Consolidate.Invoke(
+			ictx.ID(),
+			ictx.ID(),
+			ictx.ID().DID().String(),
+			egress.ConsolidateCaveats{
+				Cause: inv.Link(),
+			},
+			delegation.WithNoExpiration(),
+		)
+		if err != nil {
+			return result.Error[egress.TrackOk, egress.TrackError](egress.NewTrackError(err.Error())), nil, nil
+		}
+
+		effects := fx.NewEffects(fx.WithFork(fx.FromInvocation(consolidateInv)))
+
+		return result.Ok[egress.TrackOk, egress.TrackError](egress.TrackOk{}), effects, nil
 	}
 }

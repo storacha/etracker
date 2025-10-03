@@ -38,10 +38,11 @@ type egressRecord struct {
 	NodeID     string `dynamodbav:"nodeID"`
 	Receipts   string `dynamodbav:"receipts"`
 	Endpoint   string `dynamodbav:"endpoint"`
+	Cause      string `dynamodbav:"cause"`
 	ReceivedAt string `dynamodbav:"receivedAt"`
 }
 
-func newRecord(nodeID did.DID, receipts ucan.Link, endpoint *url.URL) egressRecord {
+func newRecord(nodeID did.DID, receipts ucan.Link, endpoint *url.URL, cause ucan.Link) egressRecord {
 	// TODO: review keys to improve performance and access patterns
 	receivedAt := time.Now().UTC()
 	dateStr := receivedAt.Format("2006-01-02")
@@ -55,12 +56,13 @@ func newRecord(nodeID did.DID, receipts ucan.Link, endpoint *url.URL) egressReco
 		NodeID:     nodeID.String(),
 		Receipts:   receipts.String(),
 		Endpoint:   endpoint.String(),
+		Cause:      cause.String(),
 		ReceivedAt: receivedAt.Format(time.RFC3339),
 	}
 }
 
-func (d *DynamoEgressTable) Record(ctx context.Context, nodeID did.DID, receipts ucan.Link, endpoint *url.URL) error {
-	item, err := attributevalue.MarshalMap(newRecord(nodeID, receipts, endpoint))
+func (d *DynamoEgressTable) Record(ctx context.Context, nodeID did.DID, receipts ucan.Link, endpoint *url.URL, cause ucan.Link) error {
+	item, err := attributevalue.MarshalMap(newRecord(nodeID, receipts, endpoint, cause))
 	if err != nil {
 		return fmt.Errorf("serializing egress record: %w", err)
 	}
