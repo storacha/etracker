@@ -64,7 +64,7 @@ func (d *DynamoConsolidatedTable) Get(ctx context.Context, nodeDID did.DID, caus
 	}
 
 	if result.Item == nil {
-		return nil, fmt.Errorf("record not found")
+		return nil, ErrNotFound
 	}
 
 	return d.unmarshalRecord(result.Item)
@@ -80,6 +80,10 @@ func (d *DynamoConsolidatedTable) GetByNode(ctx context.Context, nodeDID did.DID
 	})
 	if err != nil {
 		return nil, fmt.Errorf("querying consolidated records by node: %w", err)
+	}
+
+	if len(result.Items) == 0 {
+		return nil, ErrNotFound
 	}
 
 	records := make([]ConsolidatedRecord, 0, len(result.Items))

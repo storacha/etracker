@@ -1,16 +1,19 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 
 	"github.com/ipfs/go-cid"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	"github.com/storacha/go-ucanto/did"
 	"github.com/storacha/go-ucanto/principal/signer"
 	ucanhttp "github.com/storacha/go-ucanto/transport/http"
 
 	"github.com/storacha/etracker/internal/build"
+	"github.com/storacha/etracker/internal/consolidator"
 )
 
 func (s *Server) getRootHandler() http.HandlerFunc {
@@ -50,16 +53,38 @@ func (s *Server) ucanHandler() http.HandlerFunc {
 
 func (s *Server) getReceiptsHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		cidStr := r.PathValue("cid")
-		cid, err := cid.Decode(cidStr)
+		nodeDIDStr := r.URL.Query().Get("did")
+		nodeDID, err := did.Parse(nodeDIDStr)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
+			http.Error(w, "invalid node DID", http.StatusBadRequest)
 			return
 		}
 
-		_ = cidlink.Link{Cid: cid}
+		cidStr := r.PathValue("cid")
+		cid, err := cid.Decode(cidStr)
+		if err != nil {
+			http.Error(w, "invalid invocation CID", http.StatusBadRequest)
+			return
+		}
 
-		// TODO: fetch receipt from DB
-		w.WriteHeader(http.StatusNotFound)
+		cause := cidlink.Link{Cid: cid}
+
+		rcpt, err := s.cons.GetReceipt(r.Context(), nodeDID, cause)
+		if err != nil {
+			if errors.Is(err, consolidator.ErrNotFound) {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+
+			log.Errorf("getting receipt: %s", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		_, err = io.Copy(w, rcpt.Archive())
+		if err != nil {
+			log.Errorf("sending receipt: %s", err)
+		}
 	}
 }

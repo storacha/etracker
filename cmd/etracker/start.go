@@ -122,12 +122,6 @@ func startService(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("creating service: %w", err)
 	}
 
-	// Create server
-	server, err := server.New(id, svc)
-	if err != nil {
-		return fmt.Errorf("creating server: %w", err)
-	}
-
 	// Create and start consolidator
 	interval := time.Duration(cfg.ConsolidationInterval) * time.Second
 	batchSize := cfg.ConsolidationBatchSize
@@ -136,6 +130,12 @@ func startService(cmd *cobra.Command, args []string) error {
 
 	// Start consolidator in a goroutine
 	go cons.Start(ctx)
+
+	// Create server
+	server, err := server.New(id, svc, cons)
+	if err != nil {
+		return fmt.Errorf("creating server: %w", err)
+	}
 
 	// Handle graceful shutdown
 	sigCh := make(chan os.Signal, 1)

@@ -17,13 +17,17 @@ import (
 	"github.com/storacha/go-ucanto/core/receipt/ran"
 	"github.com/storacha/go-ucanto/core/result"
 	fdm "github.com/storacha/go-ucanto/core/result/failure/datamodel"
+	"github.com/storacha/go-ucanto/did"
 	"github.com/storacha/go-ucanto/principal"
+	"github.com/storacha/go-ucanto/ucan"
 
 	"github.com/storacha/etracker/internal/db/consolidated"
 	"github.com/storacha/etracker/internal/db/egress"
 )
 
 var log = logging.Logger("consolidator")
+
+var ErrNotFound = consolidated.ErrNotFound
 
 type Consolidator struct {
 	id                principal.Signer
@@ -264,4 +268,13 @@ func (c *Consolidator) extractSize(retrievalRcpt receipt.Receipt[content.Retriev
 	}
 
 	return caveats.Range.End - caveats.Range.Start + 1, nil
+}
+
+func (c *Consolidator) GetReceipt(ctx context.Context, nodeDID did.DID, cause ucan.Link) (receipt.AnyReceipt, error) {
+	consRecord, err := c.consolidatedTable.Get(ctx, nodeDID, cause)
+	if err != nil {
+		return nil, err
+	}
+
+	return consRecord.Receipt, nil
 }

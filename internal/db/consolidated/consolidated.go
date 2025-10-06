@@ -2,6 +2,7 @@ package consolidated
 
 import (
 	"context"
+	"errors"
 
 	"github.com/storacha/go-ucanto/core/receipt"
 	"github.com/storacha/go-ucanto/did"
@@ -15,6 +16,8 @@ type ConsolidatedRecord struct {
 	Receipt     receipt.AnyReceipt
 	ProcessedAt string
 }
+
+var ErrNotFound = errors.New("record not found")
 
 type ConsolidatedTable interface {
 	Add(ctx context.Context, nodeDID did.DID, cause ucan.Link, bytes uint64, rcpt receipt.AnyReceipt) error

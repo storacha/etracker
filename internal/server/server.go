@@ -7,6 +7,7 @@ import (
 	"github.com/storacha/go-ucanto/principal"
 	ucanto "github.com/storacha/go-ucanto/server"
 
+	"github.com/storacha/etracker/internal/consolidator"
 	"github.com/storacha/etracker/internal/presets"
 	"github.com/storacha/etracker/internal/service"
 )
@@ -15,9 +16,10 @@ var log = logging.Logger("server")
 
 type Server struct {
 	ucantoSrv ucanto.ServerView[ucanto.Service]
+	cons      *consolidator.Consolidator
 }
 
-func New(id principal.Signer, svc *service.Service) (*Server, error) {
+func New(id principal.Signer, svc *service.Service, cons *consolidator.Consolidator) (*Server, error) {
 	opts := serviceMethods(svc)
 
 	presolver, err := presets.NewPresetResolver()
@@ -31,7 +33,7 @@ func New(id principal.Signer, svc *service.Service) (*Server, error) {
 		return nil, err
 	}
 
-	return &Server{ucantoSrv: ucantoSrv}, nil
+	return &Server{ucantoSrv: ucantoSrv, cons: cons}, nil
 }
 
 func (s *Server) ListenAndServe(addr string) error {
