@@ -3,6 +3,7 @@ package consolidator
 import (
 	"context"
 	"fmt"
+	"iter"
 	"net/http"
 	"net/url"
 	"strings"
@@ -116,10 +117,15 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 
 		// Process each receipt in the batch
 		totalBytes := uint64(0)
-		for _, rcpt := range receipts {
+		for rcpt, err := range receipts {
+			if err != nil {
+				log.Errorf("Failed to fetch receipt from batch %s: %v", record.Receipts.String(), err)
+				continue
+			}
+
 			retrievalRcpt, err := receipt.Rebind[content.RetrieveOk, fdm.FailureModel](rcpt, content.RetrieveOkType(), fdm.FailureType())
 			if err != nil {
-				log.Warnf("receipt doesn't seem a retrieval receipt: %w", err)
+				log.Warnf("Receipt doesn't seem to be a retrieval receipt: %w", err)
 				continue
 			}
 
@@ -164,7 +170,7 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 	return nil
 }
 
-func (c *Consolidator) fetchReceipts(ctx context.Context, record egress.EgressRecord) ([]receipt.AnyReceipt, error) {
+func (c *Consolidator) fetchReceipts(ctx context.Context, record egress.EgressRecord) (iter.Seq2[receipt.AnyReceipt, error], error) {
 	// Substitute {cid} in the endpoint URL with the receipts CID
 	batchURLStr := record.Endpoint
 	batchCID := record.Receipts.String()
@@ -200,23 +206,31 @@ func (c *Consolidator) fetchReceipts(ctx context.Context, record egress.EgressRe
 	if err != nil {
 		return nil, fmt.Errorf("decoding receipt batch: %w", err)
 	}
-	defer resp.Body.Close()
 
-	var rcpts []receipt.AnyReceipt
-	for blk, err := range blks {
-		if err != nil {
-			return nil, fmt.Errorf("iterating over receipt blocks: %w", err)
+	return func(yield func(receipt.AnyReceipt, error) bool) {
+		for blk, err := range blks {
+			if err != nil {
+				if !yield(nil, fmt.Errorf("iterating over batch blocks: %w", err)) {
+					return
+				}
+
+				continue
+			}
+
+			rcpt, err := receipt.Extract(blk.Bytes())
+			if err != nil {
+				if !yield(nil, fmt.Errorf("extracting receipt: %w", err)) {
+					return
+				}
+
+				continue
+			}
+
+			if !yield(rcpt, nil) {
+				return
+			}
 		}
-
-		rcpt, err := receipt.Extract(blk.Bytes())
-		if err != nil {
-			return nil, fmt.Errorf("extracting receipt: %w", err)
-		}
-
-		rcpts = append(rcpts, rcpt)
-	}
-
-	return rcpts, nil
+	}, nil
 }
 
 func (c *Consolidator) validateReceipt(retrievalRcpt receipt.Receipt[content.RetrieveOk, fdm.FailureModel]) error {
