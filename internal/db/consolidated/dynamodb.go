@@ -3,6 +3,7 @@ package consolidated
 import (
 	"context"
 	"fmt"
+	"iter"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -57,7 +58,7 @@ func (d *DynamoConsolidatedTable) Add(ctx context.Context, nodeDID did.DID, rece
 	return nil
 }
 
-func (d *DynamoConsolidatedTable) Get(ctx context.Context, nodeDID did.DID, receiptsBatchCID ucan.Link) (*ConsolidatedRecord, error) {
+func (d *DynamoConsolidatedTable) Get(ctx context.Context, nodeDID did.DID, receiptsBatchCID ucan.Link) (ConsolidatedRecord, error) {
 	result, err := d.client.GetItem(ctx, &dynamodb.GetItemInput{
 		TableName: aws.String(d.tableName),
 		Key: map[string]types.AttributeValue{
@@ -66,17 +67,17 @@ func (d *DynamoConsolidatedTable) Get(ctx context.Context, nodeDID did.DID, rece
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("getting consolidated record: %w", err)
+		return ConsolidatedRecord{}, fmt.Errorf("getting consolidated record: %w", err)
 	}
 
 	if result.Item == nil {
-		return nil, fmt.Errorf("record not found")
+		return ConsolidatedRecord{}, fmt.Errorf("record not found")
 	}
 
 	return d.unmarshalRecord(result.Item)
 }
 
-func (d *DynamoConsolidatedTable) GetByNode(ctx context.Context, nodeDID did.DID) ([]ConsolidatedRecord, error) {
+func (d *DynamoConsolidatedTable) List(ctx context.Context, nodeDID did.DID) (iter.Seq2[ConsolidatedRecord, error], error) {
 	result, err := d.client.Query(ctx, &dynamodb.QueryInput{
 		TableName:              aws.String(d.tableName),
 		KeyConditionExpression: aws.String("NodeDID = :nodeDID"),
@@ -88,36 +89,36 @@ func (d *DynamoConsolidatedTable) GetByNode(ctx context.Context, nodeDID did.DID
 		return nil, fmt.Errorf("querying consolidated records by node: %w", err)
 	}
 
-	records := make([]ConsolidatedRecord, 0, len(result.Items))
-	for _, item := range result.Items {
-		record, err := d.unmarshalRecord(item)
-		if err != nil {
-			return nil, err
+	return func(yield func(ConsolidatedRecord, error) bool) {
+		for _, item := range result.Items {
+			record, err := d.unmarshalRecord(item)
+			if err != nil {
+				if !yield(record, err) {
+					return
+				}
+			}
 		}
-		records = append(records, *record)
-	}
-
-	return records, nil
+	}, nil
 }
 
-func (d *DynamoConsolidatedTable) unmarshalRecord(item map[string]types.AttributeValue) (*ConsolidatedRecord, error) {
+func (d *DynamoConsolidatedTable) unmarshalRecord(item map[string]types.AttributeValue) (ConsolidatedRecord, error) {
 	var record consolidatedRecord
 	if err := attributevalue.UnmarshalMap(item, &record); err != nil {
-		return nil, fmt.Errorf("unmarshaling consolidated record: %w", err)
+		return ConsolidatedRecord{}, fmt.Errorf("unmarshaling consolidated record: %w", err)
 	}
 
 	parsedDID, err := did.Parse(record.NodeDID)
 	if err != nil {
-		return nil, fmt.Errorf("parsing node DID: %w", err)
+		return ConsolidatedRecord{}, fmt.Errorf("parsing node DID: %w", err)
 	}
 
 	c, err := cid.Decode(record.ReceiptsBatchCID)
 	if err != nil {
-		return nil, fmt.Errorf("parsing receipts batch CID: %w", err)
+		return ConsolidatedRecord{}, fmt.Errorf("parsing receipts batch CID: %w", err)
 	}
 	receiptsBatchCID := cidlink.Link{Cid: c}
 
-	return &ConsolidatedRecord{
+	return ConsolidatedRecord{
 		NodeDID:          parsedDID,
 		ReceiptsBatchCID: receiptsBatchCID,
 		TotalBytes:       record.TotalBytes,
