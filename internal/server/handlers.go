@@ -66,12 +66,14 @@ func (s *Server) getReceiptsHandler() http.HandlerFunc {
 }
 
 func (s *Server) getMetricsHandler() http.HandlerFunc {
+	promHandler := promhttp.Handler()
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != fmt.Sprintf("Bearer %s", s.cfg.metricsEndpointToken) {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 
-		promhttp.Handler().ServeHTTP(w, r)
+		promHandler.ServeHTTP(w, r)
 	}
 }

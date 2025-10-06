@@ -18,6 +18,8 @@ import (
 	"github.com/storacha/go-ucanto/core/result"
 	fdm "github.com/storacha/go-ucanto/core/result/failure/datamodel"
 	"github.com/storacha/go-ucanto/principal"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 
 	"github.com/storacha/etracker/internal/db/consolidated"
 	"github.com/storacha/etracker/internal/db/egress"
@@ -145,7 +147,7 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 		}
 
 		// Increment consolidated bytes counter for this node
-		metrics.ConsolidatedBytesPerNode.WithLabelValues(record.NodeID.String()).Add(float64(totalBytes))
+		metrics.ConsolidatedBytesPerNode.Add(ctx, float64(totalBytes), metric.WithAttributes(attribute.String("node_id", record.NodeID.String())))
 
 		// Issue the receipt for the consolidation operation
 		// TODO: store in the DB

@@ -1,12 +1,14 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/storacha/go-ucanto/principal"
 	ucanto "github.com/storacha/go-ucanto/server"
 
+	"github.com/storacha/etracker/internal/metrics"
 	"github.com/storacha/etracker/internal/presets"
 	"github.com/storacha/etracker/internal/service"
 )
@@ -60,6 +62,10 @@ func (s *Server) ListenAndServe(addr string) error {
 	mux.HandleFunc("GET /receipts/{cid}", s.getReceiptsHandler())
 
 	if s.cfg.metricsEndpointToken != "" {
+		if err := metrics.Init(); err != nil {
+			return fmt.Errorf("initializing metrics: %w", err)
+		}
+
 		mux.Handle("GET /metrics", s.getMetricsHandler())
 	} else {
 		log.Warnf("Metrics endpoint is disabled")

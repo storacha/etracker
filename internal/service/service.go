@@ -7,6 +7,8 @@ import (
 	"github.com/storacha/go-ucanto/did"
 	"github.com/storacha/go-ucanto/principal"
 	"github.com/storacha/go-ucanto/ucan"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 
 	"github.com/storacha/etracker/internal/db/egress"
 	"github.com/storacha/etracker/internal/metrics"
@@ -26,7 +28,7 @@ func (s *Service) Record(ctx context.Context, nodeDID did.DID, receipts ucan.Lin
 		return err
 	}
 
-	metrics.TrackedBatchesPerNode.WithLabelValues(nodeDID.String()).Inc()
+	metrics.TrackedBatchesPerNode.Add(ctx, 1, metric.WithAttributes(attribute.String("node_id", nodeDID.String())))
 
 	return nil
 }
