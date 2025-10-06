@@ -51,7 +51,7 @@ func (s *Server) ucanHandler() http.HandlerFunc {
 func (s *Server) getReceiptsHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cidStr := r.PathValue("cid")
-		cid, err := cid.Decode(cidStr)
+		cid, err := cid.Parse(cidStr)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
