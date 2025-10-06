@@ -36,12 +36,12 @@
           "type": "S"
         },
         {
-          "name": "ReceiptsBatchCID",
+          "name": "Cause",
           "type": "S"
         }
       ],
       "hashKey": "NodeDID",
-      "rangeKey": "ReceiptsBatchCID"
+      "rangeKey": "Cause"
     }
   ],
   "networks": [

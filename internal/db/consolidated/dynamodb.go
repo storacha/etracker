@@ -2,7 +2,9 @@ package consolidated
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -11,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/ipfs/go-cid"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	"github.com/storacha/go-ucanto/core/receipt"
 	"github.com/storacha/go-ucanto/did"
 	"github.com/storacha/go-ucanto/ucan"
 )
@@ -26,19 +29,10 @@ func NewDynamoConsolidatedTable(client *dynamodb.Client, tableName string) *Dyna
 	return &DynamoConsolidatedTable{client, tableName}
 }
 
-type consolidatedRecord struct {
-	NodeDID          string `dynamodbav:"NodeDID"`
-	ReceiptsBatchCID string `dynamodbav:"ReceiptsBatchCID"`
-	TotalBytes       uint64 `dynamodbav:"TotalBytes"`
-	ProcessedAt      string `dynamodbav:"ProcessedAt"`
-}
-
-func (d *DynamoConsolidatedTable) Add(ctx context.Context, nodeDID did.DID, receiptsBatchCID ucan.Link, bytes uint64) error {
-	record := consolidatedRecord{
-		NodeDID:          nodeDID.String(),
-		ReceiptsBatchCID: receiptsBatchCID.String(),
-		TotalBytes:       bytes,
-		ProcessedAt:      time.Now().UTC().Format(time.RFC3339),
+func (d *DynamoConsolidatedTable) Add(ctx context.Context, nodeDID did.DID, cause ucan.Link, bytes uint64, rcpt receipt.AnyReceipt) error {
+	record, err := newConsolidatedRecord(nodeDID, cause, bytes, rcpt)
+	if err != nil {
+		return fmt.Errorf("creating consolidated record: %w", err)
 	}
 
 	item, err := attributevalue.MarshalMap(record)
@@ -57,12 +51,12 @@ func (d *DynamoConsolidatedTable) Add(ctx context.Context, nodeDID did.DID, rece
 	return nil
 }
 
-func (d *DynamoConsolidatedTable) Get(ctx context.Context, nodeDID did.DID, receiptsBatchCID ucan.Link) (*ConsolidatedRecord, error) {
+func (d *DynamoConsolidatedTable) Get(ctx context.Context, nodeDID did.DID, cause ucan.Link) (*ConsolidatedRecord, error) {
 	result, err := d.client.GetItem(ctx, &dynamodb.GetItemInput{
 		TableName: aws.String(d.tableName),
 		Key: map[string]types.AttributeValue{
-			"NodeDID":          &types.AttributeValueMemberS{Value: nodeDID.String()},
-			"ReceiptsBatchCID": &types.AttributeValueMemberS{Value: receiptsBatchCID.String()},
+			"NodeDID": &types.AttributeValueMemberS{Value: nodeDID.String()},
+			"Cause":   &types.AttributeValueMemberS{Value: cause.String()},
 		},
 	})
 	if err != nil {
@@ -100,27 +94,66 @@ func (d *DynamoConsolidatedTable) GetByNode(ctx context.Context, nodeDID did.DID
 	return records, nil
 }
 
+type consolidatedRecord struct {
+	NodeDID     string `dynamodbav:"NodeDID"`
+	Cause       string `dynamodbav:"Cause"`
+	TotalBytes  uint64 `dynamodbav:"TotalBytes"`
+	Receipt     []byte `dynamodbav:"Receipt"`
+	ProcessedAt string `dynamodbav:"ProcessedAt"`
+}
+
+func newConsolidatedRecord(nodeDID did.DID, cause ucan.Link, bytes uint64, rcpt receipt.AnyReceipt) (*consolidatedRecord, error) {
+	// binary values must be base64-encoded before sending them to DynamoDB
+	arch := rcpt.Archive()
+	archBytes, err := io.ReadAll(arch)
+	if err != nil {
+		return nil, fmt.Errorf("reading receipt archive: %w", err)
+	}
+
+	rcptBytes := make([]byte, base64.StdEncoding.EncodedLen(len(archBytes)))
+	base64.StdEncoding.Encode(rcptBytes, archBytes)
+
+	return &consolidatedRecord{
+		NodeDID:     nodeDID.String(),
+		Cause:       cause.String(),
+		TotalBytes:  bytes,
+		Receipt:     rcptBytes,
+		ProcessedAt: time.Now().UTC().Format(time.RFC3339),
+	}, nil
+}
+
 func (d *DynamoConsolidatedTable) unmarshalRecord(item map[string]types.AttributeValue) (*ConsolidatedRecord, error) {
 	var record consolidatedRecord
 	if err := attributevalue.UnmarshalMap(item, &record); err != nil {
 		return nil, fmt.Errorf("unmarshaling consolidated record: %w", err)
 	}
 
-	parsedDID, err := did.Parse(record.NodeDID)
+	nodeDID, err := did.Parse(record.NodeDID)
 	if err != nil {
 		return nil, fmt.Errorf("parsing node DID: %w", err)
 	}
 
-	c, err := cid.Decode(record.ReceiptsBatchCID)
+	c, err := cid.Decode(record.Cause)
 	if err != nil {
-		return nil, fmt.Errorf("parsing receipts batch CID: %w", err)
+		return nil, fmt.Errorf("parsing cause CID: %w", err)
 	}
-	receiptsBatchCID := cidlink.Link{Cid: c}
+	cause := cidlink.Link{Cid: c}
+
+	archBytes := make([]byte, base64.StdEncoding.DecodedLen(len(record.Receipt)))
+	if _, err := base64.StdEncoding.Decode(archBytes, record.Receipt); err != nil {
+		return nil, fmt.Errorf("decoding receipt archive: %w", err)
+	}
+
+	rcpt, err := receipt.Extract(archBytes)
+	if err != nil {
+		return nil, fmt.Errorf("extracting receipt: %w", err)
+	}
 
 	return &ConsolidatedRecord{
-		NodeDID:          parsedDID,
-		ReceiptsBatchCID: receiptsBatchCID,
-		TotalBytes:       record.TotalBytes,
-		ProcessedAt:      record.ProcessedAt,
+		NodeDID:     nodeDID,
+		Cause:       cause,
+		TotalBytes:  record.TotalBytes,
+		Receipt:     rcpt,
+		ProcessedAt: record.ProcessedAt,
 	}, nil
 }

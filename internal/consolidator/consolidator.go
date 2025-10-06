@@ -137,17 +137,21 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 			totalBytes += size
 		}
 
-		// Store consolidated record (one per batch)
-		if err := c.consolidatedTable.Add(ctx, record.NodeID, record.Receipts, totalBytes); err != nil {
-			log.Errorf("Failed to add consolidated record for node %s, batch %s: %v", record.NodeID, record.Receipts, err)
+		// Issue the receipt for the consolidation operation
+		// TODO: store in the DB
+		consolidationRcpt, err := receipt.Issue(
+			c.id,
+			result.Ok[capegress.ConsolidateOk, capegress.ConsolidateError](capegress.ConsolidateOk{}),
+			ran.FromInvocation(inv),
+		)
+		if err != nil {
+			log.Errorf("Failed to issue consolidation receipt: %v", err)
 			continue
 		}
 
-		// Issue the receipt for the consolidation operation
-		// TODO: store in the DB
-		_, err = receipt.Issue(c.id, result.Ok[capegress.ConsolidateOk, capegress.ConsolidateError](capegress.ConsolidateOk{}), ran.FromInvocation(inv))
-		if err != nil {
-			log.Errorf("Failed to issue consolidation receipt: %v", err)
+		// Store consolidated record (one per batch)
+		if err := c.consolidatedTable.Add(ctx, record.NodeID, record.Receipts, totalBytes, consolidationRcpt); err != nil {
+			log.Errorf("Failed to add consolidated record for node %s, batch %s: %v", record.NodeID, record.Receipts, err)
 			continue
 		}
 

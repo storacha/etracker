@@ -90,12 +90,12 @@ module "app" {
           type = "S"
         },
         {
-          name = "ReceiptsBatchCID"
+          name = "Cause"
           type = "S"
         },
       ]
       hash_key = "NodeDID"
-      range_key = "ReceiptsBatchCID"
+      range_key = "Cause"
     },
   ]
   buckets = [
