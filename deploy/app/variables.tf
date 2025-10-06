@@ -50,3 +50,8 @@ variable "network" {
   type        = string
   default     = "hot"
 }
+
+variable "grafana_metrics_token" {
+  description = "value for grafana_metrics_token secret"
+  type = string
+}

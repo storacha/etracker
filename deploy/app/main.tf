@@ -61,6 +61,7 @@ module "app" {
   # enter secret values your app will use here -- these will be available
   # as env vars in the container at runtime
   secrets = { 
+    "GRAFANA_METRICS_TOKEN" = var.grafana_metrics_token
   }
   # enter any sqs queues you want to create here
   queues = []

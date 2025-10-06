@@ -13,6 +13,7 @@ type Config struct {
 	Port                   int        `mapstructure:"port" validate:"required,min=1,max=65535"`
 	PrivateKey             string     `mapstructure:"private_key" validate:"required"`
 	DID                    string     `mapstructure:"did" validate:"startswith=did:web:"`
+	GrafanaMetricsToken    string     `mapstructure:"grafana_metrics_token"`
 	AWSConfig              aws.Config `mapstructure:"aws_config"`
 	EgressTableName        string     `mapstructure:"egress_table_name" validate:"required"`
 	ConsolidatedTableName  string     `mapstructure:"consolidated_table_name" validate:"required"`

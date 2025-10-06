@@ -28,6 +28,8 @@ on:
         required: true
       region:
         required: true
+      grafana-metrics-token:
+        required: true
       cloudflare-zone-id:
         required: true
       cloudflare-api-token:
@@ -49,6 +51,7 @@ env:
   TF_VAR_domain_base: 
   TF_VAR_allowed_account_id: ${{ secrets.aws-account-id }}
   TF_VAR_region: ${{ secrets.region }}
+  TF_VAR_grafana_metrics_token: ${{ secrets.grafana-metrics-token }}
   TF_VAR_cloudflare_zone_id: ${{ secrets.cloudflare-zone-id }}
   CLOUDFLARE_API_TOKEN: ${{ secrets.cloudflare-api-token }}
   DEPLOY_ENV: ci

@@ -53,6 +53,13 @@ func init() {
 	cobra.CheckErr(viper.BindPFlag("did", startCmd.Flags().Lookup("did")))
 
 	startCmd.Flags().String(
+		"grafana-metrics-token",
+		"",
+		"Grafana metrics token",
+	)
+	cobra.CheckErr(viper.BindPFlag("grafana_metrics_token", startCmd.Flags().Lookup("grafana-metrics-token")))
+
+	startCmd.Flags().String(
 		"egress-table-name",
 		"",
 		"Name of the DynamoDB table to use for egress records",
@@ -123,7 +130,7 @@ func startService(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create server
-	server, err := server.New(id, svc)
+	server, err := server.New(id, svc, server.WithMetricsEndpoint(cfg.GrafanaMetricsToken))
 	if err != nil {
 		return fmt.Errorf("creating server: %w", err)
 	}

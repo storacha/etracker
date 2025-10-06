@@ -32,6 +32,7 @@ jobs:
   #     aws-region: ${{ secrets.STAGING_AWS_REGION }}
   #     region: ${{ secrets.STAGING_AWS_REGION }}
   #     private-key: ${{ secrets.STAGING_PRIVATE_KEY }}
+  #     grafana-metrics-token: ${{ secrets.STAGING_GRAFANA_METRICS_TOKEN }}
   #     cloudflare-zone-id: ${{ secrets.STAGING_CLOUDFLARE_ZONE_ID }}
   #     cloudflare-api-token: ${{ secrets.STAGING_CLOUDFLARE_API_TOKEN }}
 
@@ -48,6 +49,7 @@ jobs:
       aws-region: ${{ secrets.WARM_STAGING_AWS_REGION }}
       region: ${{ secrets.WARM_STAGING_AWS_REGION }}
       private-key: ${{ secrets.WARM_STAGING_PRIVATE_KEY }}
+      grafana-metrics-token: ${{ secrets.WARM_STAGING_GRAFANA_METRICS_TOKEN }}
       cloudflare-zone-id: ${{ secrets.WARM_STAGING_CLOUDFLARE_ZONE_ID }}
       cloudflare-api-token: ${{ secrets.WARM_STAGING_CLOUDFLARE_API_TOKEN }}
 
@@ -64,5 +66,6 @@ jobs:
   #     aws-region: ${{ secrets.PROD_AWS_REGION }}
   #     region: ${{ secrets.PROD_AWS_REGION }}
   #     private-key: ${{ secrets.PROD_PRIVATE_KEY }}
+  #     grafana-metrics-token: ${{ secrets.PROD_GRAFANA_METRICS_TOKEN }}
   #     cloudflare-zone-id: ${{ secrets.PROD_CLOUDFLARE_ZONE_ID }}
   #     cloudflare-api-token: ${{ secrets.PROD_CLOUDFLARE_API_TOKEN }}

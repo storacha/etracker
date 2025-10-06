@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/storacha/go-ucanto/principal"
 	ucanto "github.com/storacha/go-ucanto/server"
 
@@ -14,25 +13,43 @@ import (
 
 var log = logging.Logger("server")
 
+type config struct {
+	metricsEndpointToken string
+}
+
+type Option func(*config)
+
+func WithMetricsEndpoint(authToken string) Option {
+	return func(c *config) {
+		c.metricsEndpointToken = authToken
+	}
+}
+
 type Server struct {
+	cfg       *config
 	ucantoSrv ucanto.ServerView[ucanto.Service]
 }
 
-func New(id principal.Signer, svc *service.Service) (*Server, error) {
-	opts := serviceMethods(svc)
+func New(id principal.Signer, svc *service.Service, opts ...Option) (*Server, error) {
+	cfg := &config{}
+	for _, opt := range opts {
+		opt(cfg)
+	}
+
+	ucantoOpts := serviceMethods(svc)
 
 	presolver, err := presets.NewPresetResolver()
 	if err != nil {
 		return nil, err
 	}
-	opts = append(opts, ucanto.WithPrincipalResolver(presolver.ResolveDIDKey))
+	ucantoOpts = append(ucantoOpts, ucanto.WithPrincipalResolver(presolver.ResolveDIDKey))
 
-	ucantoSrv, err := ucanto.NewServer(id, opts...)
+	ucantoSrv, err := ucanto.NewServer(id, ucantoOpts...)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Server{ucantoSrv: ucantoSrv}, nil
+	return &Server{cfg: cfg, ucantoSrv: ucantoSrv}, nil
 }
 
 func (s *Server) ListenAndServe(addr string) error {
@@ -41,7 +58,12 @@ func (s *Server) ListenAndServe(addr string) error {
 	mux.HandleFunc("GET /", s.getRootHandler())
 	mux.HandleFunc("POST /", s.ucanHandler())
 	mux.HandleFunc("GET /receipts/{cid}", s.getReceiptsHandler())
-	mux.Handle("GET /metrics", promhttp.Handler())
+
+	if s.cfg.metricsEndpointToken != "" {
+		mux.Handle("GET /metrics", s.getMetricsHandler())
+	} else {
+		log.Warnf("Metrics endpoint is disabled")
+	}
 
 	log.Infof("Listening on %s", addr)
 	return http.ListenAndServe(addr, mux)

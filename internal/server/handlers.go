@@ -7,6 +7,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/storacha/go-ucanto/principal/signer"
 	ucanhttp "github.com/storacha/go-ucanto/transport/http"
 
@@ -61,5 +62,16 @@ func (s *Server) getReceiptsHandler() http.HandlerFunc {
 
 		// TODO: fetch receipt from DB
 		w.WriteHeader(http.StatusNotFound)
+	}
+}
+
+func (s *Server) getMetricsHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != fmt.Sprintf("Bearer %s", s.cfg.metricsEndpointToken) {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		promhttp.Handler().ServeHTTP(w, r)
 	}
 }
