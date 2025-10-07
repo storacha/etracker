@@ -12,7 +12,7 @@ import (
 type EgressRecord struct {
 	PK         string
 	SK         string
-	NodeID     did.DID
+	Node       did.DID
 	Receipts   ucan.Link
 	Endpoint   string
 	Cause      ucan.Link
@@ -21,7 +21,7 @@ type EgressRecord struct {
 }
 
 type EgressTable interface {
-	Record(ctx context.Context, nodeID did.DID, receipt ucan.Link, endpoint *url.URL, cause ucan.Link) error
+	Record(ctx context.Context, node did.DID, receipt ucan.Link, endpoint *url.URL, cause ucan.Link) error
 	GetUnprocessed(ctx context.Context, limit int) ([]EgressRecord, error)
 	MarkAsProcessed(ctx context.Context, records []EgressRecord) error
 }

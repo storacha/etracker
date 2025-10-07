@@ -32,7 +32,7 @@
       "name": "consolidated-records",
       "attributes": [
         {
-          "name": "NodeDID",
+          "name": "node",
           "type": "S"
         },
         {
@@ -40,7 +40,7 @@
           "type": "S"
         }
       ],
-      "hashKey": "NodeDID",
+      "hashKey": "node",
       "rangeKey": "Cause"
     }
   ],

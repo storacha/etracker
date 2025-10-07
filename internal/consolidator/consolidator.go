@@ -114,7 +114,7 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 		// Fetch receipts from the endpoint
 		receipts, err := c.fetchReceipts(ctx, record)
 		if err != nil {
-			log.Errorf("Failed to fetch receipts for record (nodeID=%s): %v", record.NodeID, err)
+			log.Errorf("Failed to fetch receipts for record (node=%s): %v", record.Node, err)
 			continue
 		}
 
@@ -154,12 +154,12 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 		}
 
 		// Store consolidated record (one per batch)
-		if err := c.consolidatedTable.Add(ctx, record.NodeID, record.Receipts, totalBytes, consolidationRcpt); err != nil {
-			log.Errorf("Failed to add consolidated record for node %s, batch %s: %v", record.NodeID, record.Receipts, err)
+		if err := c.consolidatedTable.Add(ctx, record.Node, record.Receipts, totalBytes, consolidationRcpt); err != nil {
+			log.Errorf("Failed to add consolidated record for node %s, batch %s: %v", record.Node, record.Receipts, err)
 			continue
 		}
 
-		log.Infof("Consolidated %d bytes for node %s (batch %s)", totalBytes, record.NodeID, record.Receipts)
+		log.Infof("Consolidated %d bytes for node %s (batch %s)", totalBytes, record.Node, record.Receipts)
 	}
 
 	// Mark records as processed
@@ -270,8 +270,8 @@ func (c *Consolidator) extractSize(retrievalRcpt receipt.Receipt[content.Retriev
 	return caveats.Range.End - caveats.Range.Start + 1, nil
 }
 
-func (c *Consolidator) GetReceipt(ctx context.Context, nodeDID did.DID, cause ucan.Link) (receipt.AnyReceipt, error) {
-	consRecord, err := c.consolidatedTable.Get(ctx, nodeDID, cause)
+func (c *Consolidator) GetReceipt(ctx context.Context, node did.DID, cause ucan.Link) (receipt.AnyReceipt, error) {
+	consRecord, err := c.consolidatedTable.Get(ctx, node, cause)
 	if err != nil {
 		return nil, err
 	}

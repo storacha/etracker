@@ -35,11 +35,11 @@ func ucanTrackHandler(svc *service.Service) func(
 		inv invocation.Invocation,
 		ictx userver.InvocationContext,
 	) (result.Result[egress.TrackOk, egress.TrackError], fx.Effects, error) {
-		nodeDID := inv.Issuer().DID()
+		node := inv.Issuer().DID()
 		receipts := cap.Nb().Receipts
 		endpoint := cap.Nb().Endpoint
 
-		err := svc.Record(ctx, nodeDID, receipts, endpoint, inv.Link())
+		err := svc.Record(ctx, node, receipts, endpoint, inv.Link())
 		if err != nil {
 			return result.Error[egress.TrackOk, egress.TrackError](egress.NewTrackError(err.Error())), nil, nil
 		}

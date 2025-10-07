@@ -86,7 +86,7 @@ module "app" {
       name = "consolidated-records"
       attributes = [
         {
-          name = "NodeDID"
+          name = "node"
           type = "S"
         },
         {
@@ -94,7 +94,7 @@ module "app" {
           type = "S"
         },
       ]
-      hash_key = "NodeDID"
+      hash_key = "node"
       range_key = "Cause"
     },
   ]

@@ -38,7 +38,7 @@ type egressRecord struct {
 	// This allows sorting by time within each date partition
 	SK string `dynamodbav:"SK"`
 
-	NodeID     string `dynamodbav:"nodeID"`
+	Node       string `dynamodbav:"node"`
 	Receipts   string `dynamodbav:"receipts"`
 	Endpoint   string `dynamodbav:"endpoint"`
 	Cause      string `dynamodbav:"cause"`
@@ -46,19 +46,19 @@ type egressRecord struct {
 	Processed  bool   `dynamodbav:"proc"`
 }
 
-func newRecord(nodeID did.DID, receipts ucan.Link, endpoint *url.URL, cause ucan.Link) egressRecord {
+func newRecord(node did.DID, receipts ucan.Link, endpoint *url.URL, cause ucan.Link) egressRecord {
 	// TODO: review keys to improve performance and access patterns
 	receivedAt := time.Now().UTC()
 	dateStr := receivedAt.Format("2006-01-02")
 	shard := rand.Intn(10)
 	pk := fmt.Sprintf("%s#%d", dateStr, shard)
-	sk := fmt.Sprintf("%s#%s#%s", dateStr, nodeID, uuid.New())
+	sk := fmt.Sprintf("%s#%s#%s", dateStr, node, uuid.New())
 	endpointStr, _ := url.PathUnescape(endpoint.String())
 
 	return egressRecord{
 		PK:         pk,
 		SK:         sk,
-		NodeID:     nodeID.String(),
+		Node:       node.String(),
 		Receipts:   receipts.String(),
 		Endpoint:   endpointStr,
 		Cause:      cause.String(),
@@ -67,8 +67,8 @@ func newRecord(nodeID did.DID, receipts ucan.Link, endpoint *url.URL, cause ucan
 	}
 }
 
-func (d *DynamoEgressTable) Record(ctx context.Context, nodeID did.DID, receipts ucan.Link, endpoint *url.URL, cause ucan.Link) error {
-	item, err := attributevalue.MarshalMap(newRecord(nodeID, receipts, endpoint, cause))
+func (d *DynamoEgressTable) Record(ctx context.Context, node did.DID, receipts ucan.Link, endpoint *url.URL, cause ucan.Link) error {
+	item, err := attributevalue.MarshalMap(newRecord(node, receipts, endpoint, cause))
 	if err != nil {
 		return fmt.Errorf("serializing egress record: %w", err)
 	}
@@ -110,7 +110,7 @@ func (d *DynamoEgressTable) GetUnprocessed(ctx context.Context, limit int) ([]Eg
 				return nil, fmt.Errorf("unmarshaling egress record: %w", err)
 			}
 
-			nodeID, err := did.Parse(record.NodeID)
+			node, err := did.Parse(record.Node)
 			if err != nil {
 				return nil, fmt.Errorf("parsing node DID: %w", err)
 			}
@@ -135,7 +135,7 @@ func (d *DynamoEgressTable) GetUnprocessed(ctx context.Context, limit int) ([]Eg
 			allRecords = append(allRecords, EgressRecord{
 				PK:         record.PK,
 				SK:         record.SK,
-				NodeID:     nodeID,
+				Node:       node,
 				Receipts:   receipts,
 				Endpoint:   record.Endpoint,
 				Cause:      causeLink,

@@ -29,8 +29,8 @@ func NewDynamoConsolidatedTable(client *dynamodb.Client, tableName string) *Dyna
 	return &DynamoConsolidatedTable{client, tableName}
 }
 
-func (d *DynamoConsolidatedTable) Add(ctx context.Context, nodeDID did.DID, cause ucan.Link, bytes uint64, rcpt receipt.AnyReceipt) error {
-	record, err := newConsolidatedRecord(nodeDID, cause, bytes, rcpt)
+func (d *DynamoConsolidatedTable) Add(ctx context.Context, node did.DID, cause ucan.Link, bytes uint64, rcpt receipt.AnyReceipt) error {
+	record, err := newConsolidatedRecord(node, cause, bytes, rcpt)
 	if err != nil {
 		return fmt.Errorf("creating consolidated record: %w", err)
 	}
@@ -51,12 +51,12 @@ func (d *DynamoConsolidatedTable) Add(ctx context.Context, nodeDID did.DID, caus
 	return nil
 }
 
-func (d *DynamoConsolidatedTable) Get(ctx context.Context, nodeDID did.DID, cause ucan.Link) (*ConsolidatedRecord, error) {
+func (d *DynamoConsolidatedTable) Get(ctx context.Context, node did.DID, cause ucan.Link) (*ConsolidatedRecord, error) {
 	result, err := d.client.GetItem(ctx, &dynamodb.GetItemInput{
 		TableName: aws.String(d.tableName),
 		Key: map[string]types.AttributeValue{
-			"NodeDID": &types.AttributeValueMemberS{Value: nodeDID.String()},
-			"Cause":   &types.AttributeValueMemberS{Value: cause.String()},
+			"node":  &types.AttributeValueMemberS{Value: node.String()},
+			"Cause": &types.AttributeValueMemberS{Value: cause.String()},
 		},
 	})
 	if err != nil {
@@ -70,12 +70,12 @@ func (d *DynamoConsolidatedTable) Get(ctx context.Context, nodeDID did.DID, caus
 	return d.unmarshalRecord(result.Item)
 }
 
-func (d *DynamoConsolidatedTable) GetByNode(ctx context.Context, nodeDID did.DID) ([]ConsolidatedRecord, error) {
+func (d *DynamoConsolidatedTable) GetByNode(ctx context.Context, node did.DID) ([]ConsolidatedRecord, error) {
 	result, err := d.client.Query(ctx, &dynamodb.QueryInput{
 		TableName:              aws.String(d.tableName),
-		KeyConditionExpression: aws.String("NodeDID = :nodeDID"),
+		KeyConditionExpression: aws.String("node = :node"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":nodeDID": &types.AttributeValueMemberS{Value: nodeDID.String()},
+			":node": &types.AttributeValueMemberS{Value: node.String()},
 		},
 	})
 	if err != nil {
@@ -99,14 +99,14 @@ func (d *DynamoConsolidatedTable) GetByNode(ctx context.Context, nodeDID did.DID
 }
 
 type consolidatedRecord struct {
-	NodeDID     string `dynamodbav:"NodeDID"`
+	Node        string `dynamodbav:"node"`
 	Cause       string `dynamodbav:"Cause"`
 	TotalBytes  uint64 `dynamodbav:"TotalBytes"`
 	Receipt     []byte `dynamodbav:"Receipt"`
 	ProcessedAt string `dynamodbav:"ProcessedAt"`
 }
 
-func newConsolidatedRecord(nodeDID did.DID, cause ucan.Link, bytes uint64, rcpt receipt.AnyReceipt) (*consolidatedRecord, error) {
+func newConsolidatedRecord(node did.DID, cause ucan.Link, bytes uint64, rcpt receipt.AnyReceipt) (*consolidatedRecord, error) {
 	// binary values must be base64-encoded before sending them to DynamoDB
 	arch := rcpt.Archive()
 	archBytes, err := io.ReadAll(arch)
@@ -118,7 +118,7 @@ func newConsolidatedRecord(nodeDID did.DID, cause ucan.Link, bytes uint64, rcpt 
 	base64.StdEncoding.Encode(rcptBytes, archBytes)
 
 	return &consolidatedRecord{
-		NodeDID:     nodeDID.String(),
+		Node:        node.String(),
 		Cause:       cause.String(),
 		TotalBytes:  bytes,
 		Receipt:     rcptBytes,
@@ -132,7 +132,7 @@ func (d *DynamoConsolidatedTable) unmarshalRecord(item map[string]types.Attribut
 		return nil, fmt.Errorf("unmarshaling consolidated record: %w", err)
 	}
 
-	nodeDID, err := did.Parse(record.NodeDID)
+	node, err := did.Parse(record.Node)
 	if err != nil {
 		return nil, fmt.Errorf("parsing node DID: %w", err)
 	}
@@ -154,7 +154,7 @@ func (d *DynamoConsolidatedTable) unmarshalRecord(item map[string]types.Attribut
 	}
 
 	return &ConsolidatedRecord{
-		NodeDID:     nodeDID,
+		Node:        node,
 		Cause:       cause,
 		TotalBytes:  record.TotalBytes,
 		Receipt:     rcpt,

@@ -10,7 +10,7 @@ import (
 )
 
 type ConsolidatedRecord struct {
-	NodeDID     did.DID
+	Node        did.DID
 	Cause       ucan.Link
 	TotalBytes  uint64
 	Receipt     receipt.AnyReceipt
@@ -20,7 +20,7 @@ type ConsolidatedRecord struct {
 var ErrNotFound = errors.New("record not found")
 
 type ConsolidatedTable interface {
-	Add(ctx context.Context, nodeDID did.DID, cause ucan.Link, bytes uint64, rcpt receipt.AnyReceipt) error
-	Get(ctx context.Context, nodeDID did.DID, cause ucan.Link) (*ConsolidatedRecord, error)
-	GetByNode(ctx context.Context, nodeDID did.DID) ([]ConsolidatedRecord, error)
+	Add(ctx context.Context, node did.DID, cause ucan.Link, bytes uint64, rcpt receipt.AnyReceipt) error
+	Get(ctx context.Context, node did.DID, cause ucan.Link) (*ConsolidatedRecord, error)
+	GetByNode(ctx context.Context, node did.DID) ([]ConsolidatedRecord, error)
 }
