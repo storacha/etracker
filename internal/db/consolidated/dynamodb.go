@@ -99,11 +99,11 @@ func (d *DynamoConsolidatedTable) GetByNode(ctx context.Context, node did.DID) (
 }
 
 type consolidatedRecord struct {
-	Node        string `dynamodbav:"node"`
-	Cause       string `dynamodbav:"cause"`
-	TotalBytes  uint64 `dynamodbav:"totalBytes"`
-	Receipt     []byte `dynamodbav:"receipt"`
-	ProcessedAt string `dynamodbav:"processedAt"`
+	Node        string    `dynamodbav:"node"`
+	Cause       string    `dynamodbav:"cause"`
+	TotalBytes  uint64    `dynamodbav:"totalBytes"`
+	Receipt     []byte    `dynamodbav:"receipt"`
+	ProcessedAt time.Time `dynamodbav:"processedAt"`
 }
 
 func newConsolidatedRecord(node did.DID, cause ucan.Link, bytes uint64, rcpt receipt.AnyReceipt) (*consolidatedRecord, error) {
@@ -122,7 +122,7 @@ func newConsolidatedRecord(node did.DID, cause ucan.Link, bytes uint64, rcpt rec
 		Cause:       cause.String(),
 		TotalBytes:  bytes,
 		Receipt:     rcptBytes,
-		ProcessedAt: time.Now().UTC().Format(time.RFC3339),
+		ProcessedAt: time.Now().UTC(),
 	}, nil
 }
 

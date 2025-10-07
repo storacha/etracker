@@ -3,6 +3,7 @@ package consolidated
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/storacha/go-ucanto/core/receipt"
 	"github.com/storacha/go-ucanto/did"
@@ -14,7 +15,7 @@ type ConsolidatedRecord struct {
 	Cause       ucan.Link
 	TotalBytes  uint64
 	Receipt     receipt.AnyReceipt
-	ProcessedAt string
+	ProcessedAt time.Time
 }
 
 var ErrNotFound = errors.New("record not found")
