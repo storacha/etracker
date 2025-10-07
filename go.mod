@@ -12,6 +12,7 @@ require (
 	github.com/ipfs/go-cid v0.5.0
 	github.com/ipfs/go-log/v2 v2.7.0
 	github.com/ipld/go-ipld-prime v0.21.1-0.20240917223228-6148356a4c2e
+	github.com/prometheus/client_golang v1.23.2
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/viper v1.8.1
 	github.com/storacha/go-libstoracha v0.2.7
@@ -100,7 +101,6 @@ require (
 	github.com/pion/webrtc/v4 v4.1.3 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/polydawn/refmt v0.89.1-0.20231129105047-37766d95467a // indirect
-	github.com/prometheus/client_golang v1.23.2 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.66.1 // indirect
 	github.com/prometheus/otlptranslator v0.0.2 // indirect
