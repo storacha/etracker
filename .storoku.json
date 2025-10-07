@@ -36,12 +36,12 @@
           "type": "S"
         },
         {
-          "name": "Cause",
+          "name": "cause",
           "type": "S"
         }
       ],
       "hashKey": "node",
-      "rangeKey": "Cause"
+      "rangeKey": "cause"
     }
   ],
   "networks": [

@@ -56,7 +56,7 @@ func (d *DynamoConsolidatedTable) Get(ctx context.Context, node did.DID, cause u
 		TableName: aws.String(d.tableName),
 		Key: map[string]types.AttributeValue{
 			"node":  &types.AttributeValueMemberS{Value: node.String()},
-			"Cause": &types.AttributeValueMemberS{Value: cause.String()},
+			"cause": &types.AttributeValueMemberS{Value: cause.String()},
 		},
 	})
 	if err != nil {
@@ -100,10 +100,10 @@ func (d *DynamoConsolidatedTable) GetByNode(ctx context.Context, node did.DID) (
 
 type consolidatedRecord struct {
 	Node        string `dynamodbav:"node"`
-	Cause       string `dynamodbav:"Cause"`
-	TotalBytes  uint64 `dynamodbav:"TotalBytes"`
-	Receipt     []byte `dynamodbav:"Receipt"`
-	ProcessedAt string `dynamodbav:"ProcessedAt"`
+	Cause       string `dynamodbav:"cause"`
+	TotalBytes  uint64 `dynamodbav:"totalBytes"`
+	Receipt     []byte `dynamodbav:"receipt"`
+	ProcessedAt string `dynamodbav:"processedAt"`
 }
 
 func newConsolidatedRecord(node did.DID, cause ucan.Link, bytes uint64, rcpt receipt.AnyReceipt) (*consolidatedRecord, error) {

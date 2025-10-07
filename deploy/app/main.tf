@@ -90,12 +90,12 @@ module "app" {
           type = "S"
         },
         {
-          name = "Cause"
+          name = "cause"
           type = "S"
         },
       ]
       hash_key = "node"
-      range_key = "Cause"
+      range_key = "cause"
     },
   ]
   buckets = [
