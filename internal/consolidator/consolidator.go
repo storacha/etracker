@@ -153,7 +153,7 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 		}
 
 		// Store consolidated record (one per batch)
-		if err := c.consolidatedTable.Add(ctx, record.Receipts, record.Node, totalBytes, consolidationRcpt); err != nil {
+		if err := c.consolidatedTable.Add(ctx, inv.Link(), record.Node, totalBytes, consolidationRcpt); err != nil {
 			log.Errorf("Failed to add consolidated record for node %s, batch %s: %v", record.Node, record.Receipts, err)
 			continue
 		}
