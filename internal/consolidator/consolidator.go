@@ -118,7 +118,7 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 		}
 
 		// Process each receipt in the batch
-		totalBytes := uint64(0)
+		totalEgress := uint64(0)
 		for _, rcpt := range receipts {
 			retrievalRcpt, err := receipt.Rebind[content.RetrieveOk, fdm.FailureModel](rcpt, content.RetrieveOkType(), fdm.FailureType())
 			if err != nil {
@@ -137,7 +137,7 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 				continue
 			}
 
-			totalBytes += size
+			totalEgress += size
 		}
 
 		// Issue the receipt for the consolidation operation
@@ -153,12 +153,12 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 		}
 
 		// Store consolidated record (one per batch)
-		if err := c.consolidatedTable.Add(ctx, inv.Link(), record.Node, totalBytes, consolidationRcpt); err != nil {
+		if err := c.consolidatedTable.Add(ctx, inv.Link(), record.Node, totalEgress, consolidationRcpt); err != nil {
 			log.Errorf("Failed to add consolidated record for node %s, batch %s: %v", record.Node, record.Receipts, err)
 			continue
 		}
 
-		log.Infof("Consolidated %d bytes for node %s (batch %s)", totalBytes, record.Node, record.Receipts)
+		log.Infof("Consolidated %d bytes for node %s (batch %s)", totalEgress, record.Node, record.Receipts)
 	}
 
 	// Mark records as processed

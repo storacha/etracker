@@ -29,8 +29,8 @@ func NewDynamoConsolidatedTable(client *dynamodb.Client, tableName string) *Dyna
 	return &DynamoConsolidatedTable{client, tableName}
 }
 
-func (d *DynamoConsolidatedTable) Add(ctx context.Context, cause ucan.Link, node did.DID, bytes uint64, rcpt receipt.AnyReceipt) error {
-	record, err := newConsolidatedRecord(cause, node, bytes, rcpt)
+func (d *DynamoConsolidatedTable) Add(ctx context.Context, cause ucan.Link, node did.DID, totalEgress uint64, rcpt receipt.AnyReceipt) error {
+	record, err := newConsolidatedRecord(cause, node, totalEgress, rcpt)
 	if err != nil {
 		return fmt.Errorf("creating consolidated record: %w", err)
 	}
@@ -72,12 +72,12 @@ func (d *DynamoConsolidatedTable) Get(ctx context.Context, cause ucan.Link) (*Co
 type consolidatedRecord struct {
 	Cause       string    `dynamodbav:"cause"`
 	Node        string    `dynamodbav:"node"`
-	TotalBytes  uint64    `dynamodbav:"totalBytes"`
+	TotalEgress uint64    `dynamodbav:"totalEgress"`
 	Receipt     []byte    `dynamodbav:"receipt"`
 	ProcessedAt time.Time `dynamodbav:"processedAt"`
 }
 
-func newConsolidatedRecord(cause ucan.Link, node did.DID, bytes uint64, rcpt receipt.AnyReceipt) (*consolidatedRecord, error) {
+func newConsolidatedRecord(cause ucan.Link, node did.DID, totalEgress uint64, rcpt receipt.AnyReceipt) (*consolidatedRecord, error) {
 	// binary values must be base64-encoded before sending them to DynamoDB
 	arch := rcpt.Archive()
 	archBytes, err := io.ReadAll(arch)
@@ -91,7 +91,7 @@ func newConsolidatedRecord(cause ucan.Link, node did.DID, bytes uint64, rcpt rec
 	return &consolidatedRecord{
 		Cause:       cause.String(),
 		Node:        node.String(),
-		TotalBytes:  bytes,
+		TotalEgress: totalEgress,
 		Receipt:     rcptBytes,
 		ProcessedAt: time.Now().UTC(),
 	}, nil
@@ -127,7 +127,7 @@ func (d *DynamoConsolidatedTable) unmarshalRecord(item map[string]types.Attribut
 	return &ConsolidatedRecord{
 		Node:        node,
 		Cause:       cause,
-		TotalBytes:  record.TotalBytes,
+		TotalEgress: record.TotalEgress,
 		Receipt:     rcpt,
 		ProcessedAt: record.ProcessedAt,
 	}, nil
