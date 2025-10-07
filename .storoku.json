@@ -32,16 +32,12 @@
       "name": "consolidated-records",
       "attributes": [
         {
-          "name": "node",
-          "type": "S"
-        },
-        {
           "name": "cause",
           "type": "S"
         }
       ],
-      "hashKey": "node",
-      "rangeKey": "cause"
+      "hashKey": "cause",
+      "rangeKey": ""
     }
   ],
   "networks": [

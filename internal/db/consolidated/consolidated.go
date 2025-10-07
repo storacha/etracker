@@ -11,8 +11,8 @@ import (
 )
 
 type ConsolidatedRecord struct {
-	Node        did.DID
 	Cause       ucan.Link
+	Node        did.DID
 	TotalBytes  uint64
 	Receipt     receipt.AnyReceipt
 	ProcessedAt time.Time
@@ -21,7 +21,6 @@ type ConsolidatedRecord struct {
 var ErrNotFound = errors.New("record not found")
 
 type ConsolidatedTable interface {
-	Add(ctx context.Context, node did.DID, cause ucan.Link, bytes uint64, rcpt receipt.AnyReceipt) error
-	Get(ctx context.Context, node did.DID, cause ucan.Link) (*ConsolidatedRecord, error)
-	GetByNode(ctx context.Context, node did.DID) ([]ConsolidatedRecord, error)
+	Add(ctx context.Context, cause ucan.Link, node did.DID, bytes uint64, rcpt receipt.AnyReceipt) error
+	Get(ctx context.Context, cause ucan.Link) (*ConsolidatedRecord, error)
 }

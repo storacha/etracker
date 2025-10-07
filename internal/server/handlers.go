@@ -8,7 +8,6 @@ import (
 
 	"github.com/ipfs/go-cid"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
-	"github.com/storacha/go-ucanto/did"
 	"github.com/storacha/go-ucanto/principal/signer"
 	ucanhttp "github.com/storacha/go-ucanto/transport/http"
 
@@ -53,13 +52,6 @@ func (s *Server) ucanHandler() http.HandlerFunc {
 
 func (s *Server) getReceiptsHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		nodeDIDStr := r.URL.Query().Get("did")
-		nodeDID, err := did.Parse(nodeDIDStr)
-		if err != nil {
-			http.Error(w, "invalid node DID", http.StatusBadRequest)
-			return
-		}
-
 		cidStr := r.PathValue("cid")
 		cid, err := cid.Decode(cidStr)
 		if err != nil {
@@ -69,7 +61,7 @@ func (s *Server) getReceiptsHandler() http.HandlerFunc {
 
 		cause := cidlink.Link{Cid: cid}
 
-		rcpt, err := s.cons.GetReceipt(r.Context(), nodeDID, cause)
+		rcpt, err := s.cons.GetReceipt(r.Context(), cause)
 		if err != nil {
 			if errors.Is(err, consolidator.ErrNotFound) {
 				w.WriteHeader(http.StatusNotFound)

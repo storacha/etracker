@@ -86,16 +86,11 @@ module "app" {
       name = "consolidated-records"
       attributes = [
         {
-          name = "node"
-          type = "S"
-        },
-        {
           name = "cause"
           type = "S"
         },
       ]
-      hash_key = "node"
-      range_key = "cause"
+      hash_key = "cause"
     },
   ]
   buckets = [

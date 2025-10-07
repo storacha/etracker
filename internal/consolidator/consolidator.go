@@ -17,7 +17,6 @@ import (
 	"github.com/storacha/go-ucanto/core/receipt/ran"
 	"github.com/storacha/go-ucanto/core/result"
 	fdm "github.com/storacha/go-ucanto/core/result/failure/datamodel"
-	"github.com/storacha/go-ucanto/did"
 	"github.com/storacha/go-ucanto/principal"
 	"github.com/storacha/go-ucanto/ucan"
 
@@ -154,7 +153,7 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 		}
 
 		// Store consolidated record (one per batch)
-		if err := c.consolidatedTable.Add(ctx, record.Node, record.Receipts, totalBytes, consolidationRcpt); err != nil {
+		if err := c.consolidatedTable.Add(ctx, record.Receipts, record.Node, totalBytes, consolidationRcpt); err != nil {
 			log.Errorf("Failed to add consolidated record for node %s, batch %s: %v", record.Node, record.Receipts, err)
 			continue
 		}
@@ -270,8 +269,8 @@ func (c *Consolidator) extractSize(retrievalRcpt receipt.Receipt[content.Retriev
 	return caveats.Range.End - caveats.Range.Start + 1, nil
 }
 
-func (c *Consolidator) GetReceipt(ctx context.Context, node did.DID, cause ucan.Link) (receipt.AnyReceipt, error) {
-	consRecord, err := c.consolidatedTable.Get(ctx, node, cause)
+func (c *Consolidator) GetReceipt(ctx context.Context, cause ucan.Link) (receipt.AnyReceipt, error) {
+	consRecord, err := c.consolidatedTable.Get(ctx, cause)
 	if err != nil {
 		return nil, err
 	}
