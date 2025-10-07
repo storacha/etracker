@@ -293,14 +293,7 @@ func (c *Consolidator) ucanConsolidateHandler(
 		totalBytes += size
 	}
 
-	// Issue the receipt for the consolidation operation
-	// TODO: store in the DB
-	_, err = receipt.Issue(c.id, result.Ok[capegress.ConsolidateOk, capegress.ConsolidateError](capegress.ConsolidateOk{}), ran.FromInvocation(inv))
-	if err != nil {
-		return nil, nil, fmt.Errorf("issuing consolidation receipt: %v", err)
-	}
-
-	return result.Ok[capegress.ConsolidateOk, capegress.ConsolidateError](capegress.ConsolidateOk{}), nil, nil
+	return result.Ok[capegress.ConsolidateOk, capegress.ConsolidateError](capegress.ConsolidateOk{TotalEgress: totalBytes}), nil, nil
 }
 
 func (c *Consolidator) fetchReceipts(ctx context.Context, endpoint *url.URL, batchCID ucan.Link) (iter.Seq2[receipt.AnyReceipt, error], error) {
