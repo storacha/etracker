@@ -17,7 +17,7 @@ var (
 	TrackedBatchesPerNode metric.Int64Counter
 
 	// ConsolidatedBytesPerNode counts the consolidated bytes per node
-	ConsolidatedBytesPerNode metric.Float64Counter
+	ConsolidatedBytesPerNode metric.Int64Counter
 )
 
 // Init initializes the OpenTelemetry metrics with Prometheus exporter
@@ -45,7 +45,7 @@ func Init() error {
 		return fmt.Errorf("failed to create TrackedBatchesPerNode counter: %w", err)
 	}
 
-	ConsolidatedBytesPerNode, err = meter.Float64Counter(
+	ConsolidatedBytesPerNode, err = meter.Int64Counter(
 		"etracker_consolidated_bytes_total",
 		metric.WithDescription("Total consolidated bytes per node"),
 	)
