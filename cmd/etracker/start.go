@@ -53,11 +53,11 @@ func init() {
 	cobra.CheckErr(viper.BindPFlag("did", startCmd.Flags().Lookup("did")))
 
 	startCmd.Flags().String(
-		"grafana-metrics-token",
+		"metrics-auth-token",
 		"",
-		"Grafana metrics token",
+		"Token required to access the /metrics endpoint",
 	)
-	cobra.CheckErr(viper.BindPFlag("grafana_metrics_token", startCmd.Flags().Lookup("grafana-metrics-token")))
+	cobra.CheckErr(viper.BindPFlag("metrics_auth_token", startCmd.Flags().Lookup("metrics-auth-token")))
 
 	startCmd.Flags().String(
 		"egress-table-name",
@@ -130,7 +130,7 @@ func startService(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create server
-	server, err := server.New(id, svc, server.WithMetricsEndpoint(cfg.GrafanaMetricsToken))
+	server, err := server.New(id, svc, server.WithMetricsEndpoint(cfg.MetricsAuthToken))
 	if err != nil {
 		return fmt.Errorf("creating server: %w", err)
 	}

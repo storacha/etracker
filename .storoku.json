@@ -13,7 +13,7 @@
   "buckets": null,
   "secrets": [
     {
-      "name": "GRAFANA_METRICS_TOKEN",
+      "name": "METRICS_AUTH_TOKEN",
       "variable": true
     }
   ],

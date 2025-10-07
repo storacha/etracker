@@ -51,7 +51,7 @@ variable "network" {
   default     = "hot"
 }
 
-variable "grafana_metrics_token" {
-  description = "value for grafana_metrics_token secret"
+variable "metrics_auth_token" {
+  description = "value for metrics_auth_token secret"
   type = string
 }
