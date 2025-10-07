@@ -99,7 +99,7 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 			c.id,
 			c.id.DID().String(),
 			capegress.ConsolidateCaveats{
-				Cause: record.Cause,
+				Cause: record.Cause.Link(),
 			},
 			delegation.WithNoExpiration(),
 		)
