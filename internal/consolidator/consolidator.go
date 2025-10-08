@@ -175,7 +175,8 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 		}
 
 		// Increment consolidated bytes counter for this node
-		metrics.ConsolidatedBytesPerNode.Add(ctx, int64(totalBytes), metric.WithAttributes(attribute.String("node_id", record.NodeID.String())))
+		attributes := attribute.NewSet(attribute.String("node_id", record.NodeID.String()))
+		metrics.ConsolidatedBytesPerNode.Add(ctx, int64(totalBytes), metric.WithAttributeSet(attributes))
 
 		bLog.Infof("Consolidated %d bytes for node %s (batch %s)", totalBytes, record.NodeID, record.Receipts)
 	}

@@ -29,7 +29,8 @@ func (s *Service) Record(ctx context.Context, nodeDID did.DID, receipts ucan.Lin
 		return err
 	}
 
-	metrics.TrackedBatchesPerNode.Add(ctx, 1, metric.WithAttributes(attribute.String("node_id", nodeDID.String())))
+	attributes := attribute.NewSet(attribute.String("node_id", nodeDID.String()))
+	metrics.TrackedBatchesPerNode.Add(ctx, 1, metric.WithAttributeSet(attributes))
 
 	return nil
 }
