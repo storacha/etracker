@@ -11,7 +11,12 @@
   "topics": null,
   "queues": null,
   "buckets": null,
-  "secrets": null,
+  "secrets": [
+    {
+      "name": "ETRACKER_METRICS_AUTH_TOKEN",
+      "variable": true
+    }
+  ],
   "tables": [
     {
       "name": "egress-records",

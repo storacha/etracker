@@ -8,8 +8,11 @@ import (
 	"github.com/storacha/go-ucanto/did"
 	"github.com/storacha/go-ucanto/principal"
 	"github.com/storacha/go-ucanto/ucan"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 
 	"github.com/storacha/etracker/internal/db/egress"
+	"github.com/storacha/etracker/internal/metrics"
 )
 
 type Service struct {
@@ -22,5 +25,12 @@ func New(id principal.Signer, egressTable egress.EgressTable) (*Service, error) 
 }
 
 func (s *Service) Record(ctx context.Context, nodeDID did.DID, receipts ucan.Link, endpoint *url.URL, cause invocation.Invocation) error {
-	return s.egressTable.Record(ctx, nodeDID, receipts, endpoint, cause)
+	if err := s.egressTable.Record(ctx, nodeDID, receipts, endpoint, cause); err != nil {
+		return err
+	}
+
+	attributes := attribute.NewSet(attribute.String("node_id", nodeDID.String()))
+	metrics.TrackedBatchesPerNode.Add(ctx, 1, metric.WithAttributeSet(attributes))
+
+	return nil
 }

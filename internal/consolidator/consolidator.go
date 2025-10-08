@@ -25,9 +25,12 @@ import (
 	"github.com/storacha/go-ucanto/principal"
 	ucanto "github.com/storacha/go-ucanto/server"
 	"github.com/storacha/go-ucanto/ucan"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 
 	"github.com/storacha/etracker/internal/db/consolidated"
 	"github.com/storacha/etracker/internal/db/egress"
+	"github.com/storacha/etracker/internal/metrics"
 )
 
 var log = logging.Logger("consolidator")
@@ -170,6 +173,10 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 			bLog.Errorf("Failed to add consolidated record: %v", err)
 			continue
 		}
+
+		// Increment consolidated bytes counter for this node
+		attributes := attribute.NewSet(attribute.String("node_id", record.NodeID.String()))
+		metrics.ConsolidatedBytesPerNode.Add(ctx, int64(totalBytes), metric.WithAttributeSet(attributes))
 
 		bLog.Infof("Consolidated %d bytes for node %s (batch %s)", totalBytes, record.NodeID, record.Receipts)
 	}
