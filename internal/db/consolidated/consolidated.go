@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	capegress "github.com/storacha/go-libstoracha/capabilities/space/egress"
 	"github.com/storacha/go-ucanto/core/receipt"
 	"github.com/storacha/go-ucanto/did"
 	"github.com/storacha/go-ucanto/ucan"
@@ -21,6 +22,6 @@ type ConsolidatedRecord struct {
 var ErrNotFound = errors.New("record not found")
 
 type ConsolidatedTable interface {
-	Add(ctx context.Context, cause ucan.Link, node did.DID, totalEgress uint64, rcpt receipt.AnyReceipt) error
+	Add(ctx context.Context, cause ucan.Link, node did.DID, totalEgress uint64, rcpt capegress.ConsolidateReceipt) error
 	Get(ctx context.Context, cause ucan.Link) (*ConsolidatedRecord, error)
 }

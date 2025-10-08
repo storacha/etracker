@@ -52,6 +52,8 @@ func init() {
 	)
 	cobra.CheckErr(viper.BindPFlag("did", startCmd.Flags().Lookup("did")))
 
+	cobra.CheckErr(viper.BindEnv("metrics_auth_token"))
+
 	startCmd.Flags().String(
 		"egress-table-name",
 		"",
@@ -126,13 +128,16 @@ func startService(cmd *cobra.Command, args []string) error {
 	interval := time.Duration(cfg.ConsolidationInterval) * time.Second
 	batchSize := cfg.ConsolidationBatchSize
 
-	cons := consolidator.New(id, egressTable, consolidatedTable, interval, batchSize)
+	cons, err := consolidator.New(id, egressTable, consolidatedTable, interval, batchSize)
+	if err != nil {
+		return fmt.Errorf("creating consolidator: %w", err)
+	}
 
 	// Start consolidator in a goroutine
 	go cons.Start(ctx)
 
 	// Create server
-	server, err := server.New(id, svc, cons)
+	server, err := server.New(id, svc, cons, server.WithMetricsEndpoint(cfg.MetricsAuthToken))
 	if err != nil {
 		return fmt.Errorf("creating server: %w", err)
 	}

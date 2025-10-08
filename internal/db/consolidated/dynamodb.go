@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/ipfs/go-cid"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	capegress "github.com/storacha/go-libstoracha/capabilities/space/egress"
 	"github.com/storacha/go-ucanto/core/receipt"
 	"github.com/storacha/go-ucanto/did"
 	"github.com/storacha/go-ucanto/ucan"
@@ -29,7 +30,7 @@ func NewDynamoConsolidatedTable(client *dynamodb.Client, tableName string) *Dyna
 	return &DynamoConsolidatedTable{client, tableName}
 }
 
-func (d *DynamoConsolidatedTable) Add(ctx context.Context, cause ucan.Link, node did.DID, totalEgress uint64, rcpt receipt.AnyReceipt) error {
+func (d *DynamoConsolidatedTable) Add(ctx context.Context, cause ucan.Link, node did.DID, totalEgress uint64, rcpt capegress.ConsolidateReceipt) error {
 	record, err := newConsolidatedRecord(cause, node, totalEgress, rcpt)
 	if err != nil {
 		return fmt.Errorf("creating consolidated record: %w", err)
@@ -77,7 +78,7 @@ type consolidatedRecord struct {
 	ProcessedAt time.Time `dynamodbav:"processedAt"`
 }
 
-func newConsolidatedRecord(cause ucan.Link, node did.DID, totalEgress uint64, rcpt receipt.AnyReceipt) (*consolidatedRecord, error) {
+func newConsolidatedRecord(cause ucan.Link, node did.DID, totalEgress uint64, rcpt capegress.ConsolidateReceipt) (*consolidatedRecord, error) {
 	// binary values must be base64-encoded before sending them to DynamoDB
 	arch := rcpt.Archive()
 	archBytes, err := io.ReadAll(arch)

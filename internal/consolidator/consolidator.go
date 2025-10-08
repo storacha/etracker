@@ -3,6 +3,7 @@ package consolidator
 import (
 	"context"
 	"fmt"
+	"iter"
 	"net/http"
 	"net/url"
 	"strings"
@@ -11,17 +12,25 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/storacha/go-libstoracha/capabilities/space/content"
 	capegress "github.com/storacha/go-libstoracha/capabilities/space/egress"
+	"github.com/storacha/go-ucanto/client"
 	"github.com/storacha/go-ucanto/core/car"
+	"github.com/storacha/go-ucanto/core/dag/blockstore"
 	"github.com/storacha/go-ucanto/core/delegation"
+	"github.com/storacha/go-ucanto/core/invocation"
 	"github.com/storacha/go-ucanto/core/receipt"
+	"github.com/storacha/go-ucanto/core/receipt/fx"
 	"github.com/storacha/go-ucanto/core/receipt/ran"
 	"github.com/storacha/go-ucanto/core/result"
 	fdm "github.com/storacha/go-ucanto/core/result/failure/datamodel"
 	"github.com/storacha/go-ucanto/principal"
+	ucanto "github.com/storacha/go-ucanto/server"
 	"github.com/storacha/go-ucanto/ucan"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 
 	"github.com/storacha/etracker/internal/db/consolidated"
 	"github.com/storacha/etracker/internal/db/egress"
+	"github.com/storacha/etracker/internal/metrics"
 )
 
 var log = logging.Logger("consolidator")
@@ -32,14 +41,15 @@ type Consolidator struct {
 	id                principal.Signer
 	egressTable       egress.EgressTable
 	consolidatedTable consolidated.ConsolidatedTable
+	ucantoSrv         ucanto.ServerView[ucanto.Service]
 	httpClient        *http.Client
 	interval          time.Duration
 	batchSize         int
 	stopCh            chan struct{}
 }
 
-func New(id principal.Signer, egressTable egress.EgressTable, consolidatedTable consolidated.ConsolidatedTable, interval time.Duration, batchSize int) *Consolidator {
-	return &Consolidator{
+func New(id principal.Signer, egressTable egress.EgressTable, consolidatedTable consolidated.ConsolidatedTable, interval time.Duration, batchSize int) (*Consolidator, error) {
+	c := &Consolidator{
 		id:                id,
 		egressTable:       egressTable,
 		consolidatedTable: consolidatedTable,
@@ -48,6 +58,18 @@ func New(id principal.Signer, egressTable egress.EgressTable, consolidatedTable 
 		batchSize:         batchSize,
 		stopCh:            make(chan struct{}),
 	}
+
+	ucantoSrv, err := ucanto.NewServer(
+		id,
+		ucanto.WithServiceMethod(capegress.ConsolidateAbility, ucanto.Provide(capegress.Consolidate, c.ucanConsolidateHandler)),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	c.ucantoSrv = ucantoSrv
+
+	return c, nil
 }
 
 func (c *Consolidator) Start(ctx context.Context) {
@@ -85,7 +107,7 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 	}
 
 	if len(records) == 0 {
-		log.Debug("No unprocessed records found")
+		log.Info("No unprocessed records found")
 		return nil
 	}
 
@@ -93,72 +115,72 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 
 	// Process each record (each record represents a batch of receipts for a single node)
 	for _, record := range records {
+		var rcpt capegress.ConsolidateReceipt
+		totalEgress := uint64(0)
+
+		bLog := log.With("node", record.Node, "batch", record.Receipts.String())
+
 		// According to the spec, consolidation happens as a result of a `space/egress/consolidate` invocation.
-		// Since the service is invoking it on itself, we will generate it here.
-		// Is this acceptable or should we create and register a handler and follow the full go-ucanto flow instead?
-		inv, err := capegress.Consolidate.Invoke(
+		// We use the consolidator's own ucanto server to invoke the consolidate capability on itself.
+		consolidateInv, err := capegress.Consolidate.Invoke(
 			c.id,
 			c.id,
 			c.id.DID().String(),
 			capegress.ConsolidateCaveats{
-				Cause: record.Cause,
+				Cause: record.Cause.Link(),
 			},
 			delegation.WithNoExpiration(),
 		)
 		if err != nil {
-			log.Errorf("generating consolidation invocation: %w", err)
+			bLog.Errorf("generating consolidation invocation: %v", err)
 			continue
 		}
 
-		// Fetch receipts from the endpoint
-		receipts, err := c.fetchReceipts(ctx, record)
-		if err != nil {
-			log.Errorf("Failed to fetch receipts for record (node=%s): %v", record.Node, err)
-			continue
-		}
-
-		// Process each receipt in the batch
-		totalEgress := uint64(0)
-		for _, rcpt := range receipts {
-			retrievalRcpt, err := receipt.Rebind[content.RetrieveOk, fdm.FailureModel](rcpt, content.RetrieveOkType(), fdm.FailureType())
+		var attachErr error
+		for blk, err := range record.Cause.Blocks() {
 			if err != nil {
-				log.Warnf("receipt doesn't seem a retrieval receipt: %w", err)
-				continue
+				attachErr = err
+				break
 			}
 
-			if err := c.validateReceipt(retrievalRcpt); err != nil {
-				log.Warnf("Invalid receipt: %v", err)
-				continue
+			if err := consolidateInv.Attach(blk); err != nil {
+				attachErr = err
+				break
 			}
-
-			size, err := c.extractSize(retrievalRcpt)
-			if err != nil {
-				log.Warnf("Failed to extract size from receipt: %v", err)
-				continue
-			}
-
-			totalEgress += size
+		}
+		if attachErr != nil {
+			bLog.Errorf("attaching blocks to consolidation invocation: %v", attachErr)
+			continue
 		}
 
-		// Issue the receipt for the consolidation operation
-		// TODO: store in the DB
-		consolidationRcpt, err := receipt.Issue(
-			c.id,
-			result.Ok[capegress.ConsolidateOk, capegress.ConsolidateError](capegress.ConsolidateOk{}),
-			ran.FromInvocation(inv),
-		)
+		rcpt, err = c.execConsolidateInvocation(ctx, consolidateInv)
 		if err != nil {
-			log.Errorf("Failed to issue consolidation receipt: %v", err)
-			continue
+			rcpt, err = c.issueErrorReceipt(consolidateInv, capegress.NewConsolidateError(err.Error()))
+			if err != nil {
+				bLog.Errorf("issuing error receipt: %v", err)
+				continue
+			}
+		}
+
+		o, x := result.Unwrap(rcpt.Out())
+		var emptyErr capegress.ConsolidateError
+		if x != emptyErr {
+			bLog.Errorf("invocation failed: %s", x.Message)
+		} else {
+			totalEgress = o.TotalEgress
 		}
 
 		// Store consolidated record (one per batch)
-		if err := c.consolidatedTable.Add(ctx, inv.Link(), record.Node, totalEgress, consolidationRcpt); err != nil {
-			log.Errorf("Failed to add consolidated record for node %s, batch %s: %v", record.Node, record.Receipts, err)
+		if err := c.consolidatedTable.Add(ctx, consolidateInv.Link(), record.Node, totalEgress, rcpt); err != nil {
+			bLog.Errorf("Failed to add consolidated record: %v", err)
 			continue
 		}
 
-		log.Infof("Consolidated %d bytes for node %s (batch %s)", totalEgress, record.Node, record.Receipts)
+		// Increment consolidated bytes counter for this node
+		attributes := attribute.NewSet(attribute.String("node", record.Node.String()))
+		metrics.ConsolidatedBytesPerNode.Add(ctx, int64(totalEgress), metric.WithAttributeSet(attributes))
+
+		bLog.Infof("Consolidated %d bytes", totalEgress)
 	}
 
 	// Mark records as processed
@@ -171,14 +193,130 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 	return nil
 }
 
-func (c *Consolidator) fetchReceipts(ctx context.Context, record egress.EgressRecord) ([]receipt.AnyReceipt, error) {
+func (c *Consolidator) execConsolidateInvocation(ctx context.Context, inv invocation.Invocation) (capegress.ConsolidateReceipt, error) {
+	conn, err := client.NewConnection(c.id, c.ucantoSrv)
+	if err != nil {
+		return nil, fmt.Errorf("creating connection: %w", err)
+	}
+
+	resp, err := client.Execute(ctx, []invocation.Invocation{inv}, conn)
+	if err != nil {
+		return nil, fmt.Errorf("executing invocation: %w", err)
+	}
+
+	rcptLnk, ok := resp.Get(inv.Link())
+	if !ok {
+		return nil, fmt.Errorf("missing receipt for invocation: %s", inv.Link().String())
+	}
+
+	blocks, err := blockstore.NewBlockReader(blockstore.WithBlocksIterator(resp.Blocks()))
+	if err != nil {
+		return nil, fmt.Errorf("importing response blocks into blockstore: %w", err)
+	}
+
+	rcptReader, err := capegress.NewConsolidateReceiptReader()
+	if err != nil {
+		return nil, fmt.Errorf("constructing receipt reader: %w", err)
+	}
+
+	rcpt, err := rcptReader.Read(rcptLnk, blocks.Iterator())
+	if err != nil {
+		return nil, fmt.Errorf("reading receipt: %w", err)
+	}
+
+	return rcpt, nil
+}
+
+func (c *Consolidator) issueErrorReceipt(ranInv invocation.Invocation, failure capegress.ConsolidateError) (capegress.ConsolidateReceipt, error) {
+	anyRcpt, err := receipt.Issue(
+		c.id,
+		result.Error[capegress.ConsolidateOk, capegress.ConsolidateError](failure),
+		ran.FromInvocation(ranInv),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	reader, err := capegress.NewConsolidateReceiptReader()
+	if err != nil {
+		return nil, err
+	}
+
+	return reader.Read(anyRcpt.Root().Link(), anyRcpt.Blocks())
+}
+
+func (c *Consolidator) ucanConsolidateHandler(
+	ctx context.Context,
+	cap ucan.Capability[capegress.ConsolidateCaveats],
+	inv invocation.Invocation,
+	ictx ucanto.InvocationContext,
+) (result.Result[capegress.ConsolidateOk, capegress.ConsolidateError], fx.Effects, error) {
+	// Fetch the original egress/track invocation from the egress/consolidate invocation
+	trackInvLink := cap.Nb().Cause
+	blocks, err := blockstore.NewBlockReader(blockstore.WithBlocksIterator(inv.Blocks()))
+	if err != nil {
+		return nil, nil, fmt.Errorf("importing invocation blocks: %w", err)
+	}
+
+	trackInv, err := invocation.NewInvocationView(trackInvLink, blocks)
+	if err != nil {
+		return nil, nil, fmt.Errorf("fetching attached track invocation: %w", err)
+	}
+
+	trackCaveats, err := capegress.TrackCaveatsReader.Read(trackInv.Capabilities()[0].Nb())
+	if err != nil {
+		return nil, nil, fmt.Errorf("reading track caveats: %w", err)
+	}
+
+	// Fetch receipts from the endpoint
+	receipts, err := c.fetchReceipts(ctx, trackCaveats.Endpoint, trackCaveats.Receipts)
+	if err != nil {
+		return nil, nil, fmt.Errorf("fetching receipts: %w", err)
+	}
+
+	// Process each receipt in the batch
+	totalEgress := uint64(0)
+	for rcpt, err := range receipts {
+		if err != nil {
+			log.Errorf("Failed to fetch receipt from batch: %v", err)
+			continue
+		}
+
+		retrievalRcpt, err := receipt.Rebind[content.RetrieveOk, fdm.FailureModel](rcpt, content.RetrieveOkType(), fdm.FailureType())
+		if err != nil {
+			log.Warnf("Receipt doesn't seem to be a retrieval receipt: %v", err)
+			continue
+		}
+
+		if err := c.validateReceipt(retrievalRcpt); err != nil {
+			log.Warnf("Invalid receipt: %v", err)
+			continue
+		}
+
+		size, err := c.extractSize(retrievalRcpt)
+		if err != nil {
+			log.Warnf("Failed to extract size from receipt: %v", err)
+			continue
+		}
+
+		totalEgress += size
+	}
+
+	return result.Ok[capegress.ConsolidateOk, capegress.ConsolidateError](capegress.ConsolidateOk{TotalEgress: totalEgress}), nil, nil
+}
+
+func (c *Consolidator) fetchReceipts(ctx context.Context, endpoint *url.URL, batchCID ucan.Link) (iter.Seq2[receipt.AnyReceipt, error], error) {
 	// Substitute {cid} in the endpoint URL with the receipts CID
-	batchURLStr := record.Endpoint
-	batchCID := record.Receipts.String()
+	batchURLStr, err := url.PathUnescape(endpoint.String())
+	if err != nil {
+		return nil, fmt.Errorf("unescaping endpoint URL: %w", err)
+	}
+
+	batchCIDStr := batchCID.String()
 
 	// Handle both {cid} and :cid patterns
-	batchURLStr = strings.ReplaceAll(batchURLStr, "{cid}", batchCID)
-	batchURLStr = strings.ReplaceAll(batchURLStr, ":cid", batchCID)
+	batchURLStr = strings.ReplaceAll(batchURLStr, "{cid}", batchCIDStr)
+	batchURLStr = strings.ReplaceAll(batchURLStr, ":cid", batchCIDStr)
 
 	batchURL, err := url.Parse(batchURLStr)
 	if err != nil {
@@ -207,23 +345,31 @@ func (c *Consolidator) fetchReceipts(ctx context.Context, record egress.EgressRe
 	if err != nil {
 		return nil, fmt.Errorf("decoding receipt batch: %w", err)
 	}
-	defer resp.Body.Close()
 
-	var rcpts []receipt.AnyReceipt
-	for blk, err := range blks {
-		if err != nil {
-			return nil, fmt.Errorf("iterating over receipt blocks: %w", err)
+	return func(yield func(receipt.AnyReceipt, error) bool) {
+		for blk, err := range blks {
+			if err != nil {
+				if !yield(nil, fmt.Errorf("iterating over batch blocks: %w", err)) {
+					return
+				}
+
+				continue
+			}
+
+			rcpt, err := receipt.Extract(blk.Bytes())
+			if err != nil {
+				if !yield(nil, fmt.Errorf("extracting receipt: %w", err)) {
+					return
+				}
+
+				continue
+			}
+
+			if !yield(rcpt, nil) {
+				return
+			}
 		}
-
-		rcpt, err := receipt.Extract(blk.Bytes())
-		if err != nil {
-			return nil, fmt.Errorf("extracting receipt: %w", err)
-		}
-
-		rcpts = append(rcpts, rcpt)
-	}
-
-	return rcpts, nil
+	}, nil
 }
 
 func (c *Consolidator) validateReceipt(retrievalRcpt receipt.Receipt[content.RetrieveOk, fdm.FailureModel]) error {

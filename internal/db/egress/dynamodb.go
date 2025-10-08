@@ -2,7 +2,9 @@ package egress
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
+	"io"
 	"math/rand"
 	"net/url"
 	"time"
@@ -14,6 +16,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	"github.com/storacha/go-ucanto/core/delegation"
+	"github.com/storacha/go-ucanto/core/invocation"
 	"github.com/storacha/go-ucanto/did"
 	"github.com/storacha/go-ucanto/ucan"
 )
@@ -29,46 +33,13 @@ func NewDynamoEgressTable(client *dynamodb.Client, tableName string) *DynamoEgre
 	return &DynamoEgressTable{client, tableName}
 }
 
-type egressRecord struct {
-	// Partition key: "DATE#SHARD" (e.g., "2025-08-18#0")
-	// Where SHARD is a number 0-9 to distribute writes
-	PK string `dynamodbav:"PK"`
-
-	// Sort key: "RECEIVED_AT#NODE_ID#UNIQUE_ID"
-	// This allows sorting by time within each date partition
-	SK string `dynamodbav:"SK"`
-
-	Node       string `dynamodbav:"node"`
-	Receipts   string `dynamodbav:"receipts"`
-	Endpoint   string `dynamodbav:"endpoint"`
-	Cause      string `dynamodbav:"cause"`
-	ReceivedAt string `dynamodbav:"receivedAt"`
-	Processed  bool   `dynamodbav:"proc"`
-}
-
-func newRecord(node did.DID, receipts ucan.Link, endpoint *url.URL, cause ucan.Link) egressRecord {
-	// TODO: review keys to improve performance and access patterns
-	receivedAt := time.Now().UTC()
-	dateStr := receivedAt.Format("2006-01-02")
-	shard := rand.Intn(10)
-	pk := fmt.Sprintf("%s#%d", dateStr, shard)
-	sk := fmt.Sprintf("%s#%s#%s", dateStr, node, uuid.New())
-	endpointStr, _ := url.PathUnescape(endpoint.String())
-
-	return egressRecord{
-		PK:         pk,
-		SK:         sk,
-		Node:       node.String(),
-		Receipts:   receipts.String(),
-		Endpoint:   endpointStr,
-		Cause:      cause.String(),
-		ReceivedAt: receivedAt.Format(time.RFC3339),
-		Processed:  false,
+func (d *DynamoEgressTable) Record(ctx context.Context, node did.DID, receipts ucan.Link, endpoint *url.URL, cause invocation.Invocation) error {
+	record, err := newRecord(node, receipts, endpoint, cause)
+	if err != nil {
+		return fmt.Errorf("creating egress record: %w", err)
 	}
-}
 
-func (d *DynamoEgressTable) Record(ctx context.Context, node did.DID, receipts ucan.Link, endpoint *url.URL, cause ucan.Link) error {
-	item, err := attributevalue.MarshalMap(newRecord(node, receipts, endpoint, cause))
+	item, err := attributevalue.MarshalMap(record)
 	if err != nil {
 		return fmt.Errorf("serializing egress record: %w", err)
 	}
@@ -79,6 +50,7 @@ func (d *DynamoEgressTable) Record(ctx context.Context, node did.DID, receipts u
 	if err != nil {
 		return fmt.Errorf("storing egress record: %w", err)
 	}
+
 	return nil
 }
 
@@ -105,43 +77,12 @@ func (d *DynamoEgressTable) GetUnprocessed(ctx context.Context, limit int) ([]Eg
 		}
 
 		for _, item := range result.Items {
-			var record egressRecord
-			if err := attributevalue.UnmarshalMap(item, &record); err != nil {
+			record, err := d.unmarshalRecord(item)
+			if err != nil {
 				return nil, fmt.Errorf("unmarshaling egress record: %w", err)
 			}
 
-			node, err := did.Parse(record.Node)
-			if err != nil {
-				return nil, fmt.Errorf("parsing node DID: %w", err)
-			}
-
-			c, err := cid.Decode(record.Receipts)
-			if err != nil {
-				return nil, fmt.Errorf("parsing receipts CID: %w", err)
-			}
-			receipts := cidlink.Link{Cid: c}
-
-			receivedAt, err := time.Parse(time.RFC3339, record.ReceivedAt)
-			if err != nil {
-				return nil, fmt.Errorf("parsing received at time: %w", err)
-			}
-
-			cause, err := cid.Decode(record.Cause)
-			if err != nil {
-				return nil, fmt.Errorf("parsing cause CID: %w", err)
-			}
-			causeLink := cidlink.Link{Cid: cause}
-
-			allRecords = append(allRecords, EgressRecord{
-				PK:         record.PK,
-				SK:         record.SK,
-				Node:       node,
-				Receipts:   receipts,
-				Endpoint:   record.Endpoint,
-				Cause:      causeLink,
-				ReceivedAt: receivedAt,
-				Processed:  record.Processed,
-			})
+			allRecords = append(allRecords, *record)
 
 			if len(allRecords) >= limit {
 				return allRecords, nil
@@ -150,6 +91,98 @@ func (d *DynamoEgressTable) GetUnprocessed(ctx context.Context, limit int) ([]Eg
 	}
 
 	return allRecords, nil
+}
+
+type egressRecord struct {
+	// Partition key: "DATE#SHARD" (e.g., "2025-08-18#0")
+	// Where SHARD is a number 0-9 to distribute writes
+	PK string `dynamodbav:"PK"`
+
+	// Sort key: "RECEIVED_AT#NODE_ID#UNIQUE_ID"
+	// This allows sorting by time within each date partition
+	SK string `dynamodbav:"SK"`
+
+	Node       string `dynamodbav:"node"`
+	Receipts   string `dynamodbav:"receipts"`
+	Endpoint   string `dynamodbav:"endpoint"`
+	Cause      []byte `dynamodbav:"cause"`
+	ReceivedAt string `dynamodbav:"receivedAt"`
+	Processed  bool   `dynamodbav:"proc"`
+}
+
+func newRecord(node did.DID, receipts ucan.Link, endpoint *url.URL, cause invocation.Invocation) (*egressRecord, error) {
+	// TODO: review keys to improve performance and access patterns
+	receivedAt := time.Now().UTC()
+	dateStr := receivedAt.Format("2006-01-02")
+	shard := rand.Intn(10)
+	pk := fmt.Sprintf("%s#%d", dateStr, shard)
+	sk := fmt.Sprintf("%s#%s#%s", dateStr, node, uuid.New())
+	endpointStr, _ := url.PathUnescape(endpoint.String())
+
+	// binary values must be base64-encoded before sending them to DynamoDB
+	arch := cause.Archive()
+	archBytes, err := io.ReadAll(arch)
+	if err != nil {
+		return nil, fmt.Errorf("reading invocation archive: %w", err)
+	}
+
+	causeBytes := make([]byte, base64.StdEncoding.EncodedLen(len(archBytes)))
+	base64.StdEncoding.Encode(causeBytes, archBytes)
+
+	return &egressRecord{
+		PK:         pk,
+		SK:         sk,
+		Node:       node.String(),
+		Receipts:   receipts.String(),
+		Endpoint:   endpointStr,
+		Cause:      causeBytes,
+		ReceivedAt: receivedAt.Format(time.RFC3339),
+		Processed:  false,
+	}, nil
+}
+
+func (d *DynamoEgressTable) unmarshalRecord(item map[string]types.AttributeValue) (*EgressRecord, error) {
+	var record egressRecord
+	if err := attributevalue.UnmarshalMap(item, &record); err != nil {
+		return nil, fmt.Errorf("unmarshaling egress record: %w", err)
+	}
+
+	node, err := did.Parse(record.Node)
+	if err != nil {
+		return nil, fmt.Errorf("parsing node DID: %w", err)
+	}
+
+	c, err := cid.Decode(record.Receipts)
+	if err != nil {
+		return nil, fmt.Errorf("parsing receipts CID: %w", err)
+	}
+	receipts := cidlink.Link{Cid: c}
+
+	archBytes := make([]byte, base64.StdEncoding.DecodedLen(len(record.Cause)))
+	if _, err := base64.StdEncoding.Decode(archBytes, record.Cause); err != nil {
+		return nil, fmt.Errorf("decoding cause archive: %w", err)
+	}
+
+	cause, err := delegation.Extract(archBytes)
+	if err != nil {
+		return nil, fmt.Errorf("extracting cause: %w", err)
+	}
+
+	receivedAt, err := time.Parse(time.RFC3339, record.ReceivedAt)
+	if err != nil {
+		return nil, fmt.Errorf("parsing received at time: %w", err)
+	}
+
+	return &EgressRecord{
+		PK:         record.PK,
+		SK:         record.SK,
+		Node:       node,
+		Receipts:   receipts,
+		Endpoint:   record.Endpoint,
+		Cause:      cause,
+		ReceivedAt: receivedAt,
+		Processed:  record.Processed,
+	}, nil
 }
 
 func (d *DynamoEgressTable) MarkAsProcessed(ctx context.Context, records []EgressRecord) error {

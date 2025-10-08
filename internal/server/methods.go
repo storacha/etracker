@@ -39,7 +39,7 @@ func ucanTrackHandler(svc *service.Service) func(
 		receipts := cap.Nb().Receipts
 		endpoint := cap.Nb().Endpoint
 
-		err := svc.Record(ctx, node, receipts, endpoint, inv.Link())
+		err := svc.Record(ctx, node, receipts, endpoint, inv)
 		if err != nil {
 			return result.Error[egress.TrackOk, egress.TrackError](egress.NewTrackError(err.Error())), nil, nil
 		}

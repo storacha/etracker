@@ -50,3 +50,8 @@ variable "network" {
   type        = string
   default     = "hot"
 }
+
+variable "metrics_auth_token" {
+  description = "value for metrics_auth_token secret"
+  type = string
+}
