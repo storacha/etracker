@@ -9,7 +9,10 @@ import (
 	"github.com/ipfs/go-cid"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/storacha/go-ucanto/core/message"
+	"github.com/storacha/go-ucanto/core/receipt"
 	"github.com/storacha/go-ucanto/principal/signer"
+	"github.com/storacha/go-ucanto/transport/car/response"
 	ucanhttp "github.com/storacha/go-ucanto/transport/http"
 
 	"github.com/storacha/etracker/internal/build"
@@ -69,15 +72,29 @@ func (s *Server) getReceiptsHandler() http.HandlerFunc {
 				return
 			}
 
-			log.Errorf("getting receipt: %s", err)
+			log.Errorf("getting receipt: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		msg, err := message.Build(nil, []receipt.AnyReceipt{rcpt})
+		if err != nil {
+			log.Errorf("building message: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		res, err := response.Encode(msg)
+		if err != nil {
+			log.Errorf("encoding receipt message: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		w.WriteHeader(http.StatusOK)
-		_, err = io.Copy(w, rcpt.Archive())
+		_, err = io.Copy(w, res.Body())
 		if err != nil {
-			log.Errorf("sending receipt: %s", err)
+			log.Errorf("sending receipt: %v", err)
 		}
 	}
 }
