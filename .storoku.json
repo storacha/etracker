@@ -13,7 +13,7 @@
   "buckets": null,
   "secrets": [
     {
-      "name": "METRICS_AUTH_TOKEN",
+      "name": "ETRACKER_METRICS_AUTH_TOKEN",
       "variable": true
     }
   ],

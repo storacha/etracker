@@ -52,12 +52,7 @@ func init() {
 	)
 	cobra.CheckErr(viper.BindPFlag("did", startCmd.Flags().Lookup("did")))
 
-	startCmd.Flags().String(
-		"metrics-auth-token",
-		"",
-		"Token required to access the /metrics endpoint",
-	)
-	cobra.CheckErr(viper.BindPFlag("metrics_auth_token", startCmd.Flags().Lookup("metrics-auth-token")))
+	cobra.CheckErr(viper.BindEnv("metrics_auth_token"))
 
 	startCmd.Flags().String(
 		"egress-table-name",
