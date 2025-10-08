@@ -139,7 +139,10 @@ func startService(cmd *cobra.Command, args []string) error {
 	interval := time.Duration(cfg.ConsolidationInterval) * time.Second
 	batchSize := cfg.ConsolidationBatchSize
 
-	cons := consolidator.New(id, egressTable, consolidatedTable, interval, batchSize)
+	cons, err := consolidator.New(id, egressTable, consolidatedTable, interval, batchSize)
+	if err != nil {
+		return fmt.Errorf("creating consolidator: %w", err)
+	}
 
 	// Start consolidator in a goroutine
 	go cons.Start(ctx)

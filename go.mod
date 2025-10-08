@@ -15,8 +15,8 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/viper v1.8.1
-	github.com/storacha/go-libstoracha v0.2.7
-	github.com/storacha/go-ucanto v0.6.4
+	github.com/storacha/go-libstoracha v0.2.9
+	github.com/storacha/go-ucanto v0.6.5
 	go.opentelemetry.io/otel v1.38.0
 	go.opentelemetry.io/otel/exporters/prometheus v0.60.0
 	go.opentelemetry.io/otel/metric v1.38.0
