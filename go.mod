@@ -14,8 +14,8 @@ require (
 	github.com/ipld/go-ipld-prime v0.21.1-0.20240917223228-6148356a4c2e
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/viper v1.8.1
-	github.com/storacha/go-libstoracha v0.2.7
-	github.com/storacha/go-ucanto v0.6.4
+	github.com/storacha/go-libstoracha v0.2.9
+	github.com/storacha/go-ucanto v0.6.5
 )
 
 require (
