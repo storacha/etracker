@@ -2,21 +2,26 @@ package consolidated
 
 import (
 	"context"
-	"iter"
+	"errors"
+	"time"
 
+	capegress "github.com/storacha/go-libstoracha/capabilities/space/egress"
+	"github.com/storacha/go-ucanto/core/receipt"
 	"github.com/storacha/go-ucanto/did"
 	"github.com/storacha/go-ucanto/ucan"
 )
 
 type ConsolidatedRecord struct {
-	NodeDID          did.DID
-	ReceiptsBatchCID ucan.Link
-	TotalBytes       uint64
-	ProcessedAt      string
+	Cause       ucan.Link
+	Node        did.DID
+	TotalEgress uint64
+	Receipt     receipt.AnyReceipt
+	ProcessedAt time.Time
 }
 
+var ErrNotFound = errors.New("record not found")
+
 type ConsolidatedTable interface {
-	Add(ctx context.Context, nodeDID did.DID, receiptsBatchCID ucan.Link, bytes uint64) error
-	Get(ctx context.Context, nodeDID did.DID, receiptsBatchCID ucan.Link) (ConsolidatedRecord, error)
-	List(ctx context.Context, nodeDID did.DID) (iter.Seq2[ConsolidatedRecord, error], error)
+	Add(ctx context.Context, cause ucan.Link, node did.DID, totalEgress uint64, rcpt capegress.ConsolidateReceipt) error
+	Get(ctx context.Context, cause ucan.Link) (*ConsolidatedRecord, error)
 }

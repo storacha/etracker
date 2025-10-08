@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -8,10 +9,14 @@ import (
 	"github.com/ipfs/go-cid"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/storacha/go-ucanto/core/message"
+	"github.com/storacha/go-ucanto/core/receipt"
 	"github.com/storacha/go-ucanto/principal/signer"
+	"github.com/storacha/go-ucanto/transport/car/response"
 	ucanhttp "github.com/storacha/go-ucanto/transport/http"
 
 	"github.com/storacha/etracker/internal/build"
+	"github.com/storacha/etracker/internal/consolidator"
 )
 
 func (s *Server) getRootHandler() http.HandlerFunc {
@@ -54,14 +59,43 @@ func (s *Server) getReceiptsHandler() http.HandlerFunc {
 		cidStr := r.PathValue("cid")
 		cid, err := cid.Parse(cidStr)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
+			http.Error(w, "invalid invocation CID", http.StatusBadRequest)
 			return
 		}
 
-		_ = cidlink.Link{Cid: cid}
+		cause := cidlink.Link{Cid: cid}
 
-		// TODO: fetch receipt from DB
-		w.WriteHeader(http.StatusNotFound)
+		rcpt, err := s.cons.GetReceipt(r.Context(), cause)
+		if err != nil {
+			if errors.Is(err, consolidator.ErrNotFound) {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+
+			log.Errorf("getting receipt: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		msg, err := message.Build(nil, []receipt.AnyReceipt{rcpt})
+		if err != nil {
+			log.Errorf("building message: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		res, err := response.Encode(msg)
+		if err != nil {
+			log.Errorf("encoding receipt message: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		_, err = io.Copy(w, res.Body())
+		if err != nil {
+			log.Errorf("sending receipt: %v", err)
+		}
 	}
 }
 

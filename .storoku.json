@@ -37,16 +37,12 @@
       "name": "consolidated-records",
       "attributes": [
         {
-          "name": "NodeDID",
-          "type": "S"
-        },
-        {
-          "name": "ReceiptsBatchCID",
+          "name": "cause",
           "type": "S"
         }
       ],
-      "hashKey": "NodeDID",
-      "rangeKey": "ReceiptsBatchCID"
+      "hashKey": "cause",
+      "rangeKey": ""
     }
   ],
   "networks": [

@@ -87,16 +87,11 @@ module "app" {
       name = "consolidated-records"
       attributes = [
         {
-          name = "NodeDID"
-          type = "S"
-        },
-        {
-          name = "ReceiptsBatchCID"
+          name = "cause"
           type = "S"
         },
       ]
-      hash_key = "NodeDID"
-      range_key = "ReceiptsBatchCID"
+      hash_key = "cause"
     },
   ]
   buckets = [

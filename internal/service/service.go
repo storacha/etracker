@@ -24,12 +24,12 @@ func New(id principal.Signer, egressTable egress.EgressTable) (*Service, error) 
 	return &Service{id: id, egressTable: egressTable}, nil
 }
 
-func (s *Service) Record(ctx context.Context, nodeDID did.DID, receipts ucan.Link, endpoint *url.URL, cause invocation.Invocation) error {
-	if err := s.egressTable.Record(ctx, nodeDID, receipts, endpoint, cause); err != nil {
+func (s *Service) Record(ctx context.Context, node did.DID, receipts ucan.Link, endpoint *url.URL, cause invocation.Invocation) error {
+	if err := s.egressTable.Record(ctx, node, receipts, endpoint, cause); err != nil {
 		return err
 	}
 
-	attributes := attribute.NewSet(attribute.String("node_id", nodeDID.String()))
+	attributes := attribute.NewSet(attribute.String("node", node.String()))
 	metrics.TrackedBatchesPerNode.Add(ctx, 1, metric.WithAttributeSet(attributes))
 
 	return nil
