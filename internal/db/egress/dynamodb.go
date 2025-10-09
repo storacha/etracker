@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"math/rand"
 	"net/url"
 	"time"
 
@@ -13,7 +12,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/storacha/go-ucanto/core/delegation"
@@ -33,8 +31,8 @@ func NewDynamoEgressTable(client *dynamodb.Client, tableName string) *DynamoEgre
 	return &DynamoEgressTable{client, tableName}
 }
 
-func (d *DynamoEgressTable) Record(ctx context.Context, node did.DID, receipts ucan.Link, endpoint *url.URL, cause invocation.Invocation) error {
-	record, err := newRecord(node, receipts, endpoint, cause)
+func (d *DynamoEgressTable) Record(ctx context.Context, batch ucan.Link, node did.DID, endpoint *url.URL, cause invocation.Invocation) error {
+	record, err := newRecord(batch, node, endpoint, cause)
 	if err != nil {
 		return fmt.Errorf("creating egress record: %w", err)
 	}
@@ -55,68 +53,41 @@ func (d *DynamoEgressTable) Record(ctx context.Context, node did.DID, receipts u
 }
 
 func (d *DynamoEgressTable) GetUnprocessed(ctx context.Context, limit int) ([]EgressRecord, error) {
-	// Scan all shards for the current date for unprocessed records
-	today := time.Now().UTC().Format("2006-01-02")
-	var allRecords []EgressRecord
-
-	for shard := range 10 {
-		pk := fmt.Sprintf("%s#%d", today, shard)
-
-		result, err := d.client.Query(ctx, &dynamodb.QueryInput{
-			TableName:              aws.String(d.tableName),
-			KeyConditionExpression: aws.String("PK = :pk"),
-			FilterExpression:       aws.String("proc = :false"),
-			ExpressionAttributeValues: map[string]types.AttributeValue{
-				":pk":    &types.AttributeValueMemberS{Value: pk},
-				":false": &types.AttributeValueMemberBOOL{Value: false},
-			},
-			Limit: aws.Int32(int32(limit)),
-		})
-		if err != nil {
-			return nil, fmt.Errorf("querying unprocessed records for shard %d: %w", shard, err)
-		}
-
-		for _, item := range result.Items {
-			record, err := d.unmarshalRecord(item)
-			if err != nil {
-				return nil, fmt.Errorf("unmarshaling egress record: %w", err)
-			}
-
-			allRecords = append(allRecords, *record)
-
-			if len(allRecords) >= limit {
-				return allRecords, nil
-			}
-		}
+	result, err := d.client.Scan(ctx, &dynamodb.ScanInput{
+		TableName:        aws.String(d.tableName),
+		FilterExpression: aws.String("proc = :false"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":false": &types.AttributeValueMemberBOOL{Value: false},
+		},
+		Limit: aws.Int32(int32(limit)),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("querying unprocessed records: %w", err)
 	}
 
-	return allRecords, nil
+	var unprocessed []EgressRecord
+	for _, item := range result.Items {
+		record, err := d.unmarshalRecord(item)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling egress record: %w", err)
+		}
+
+		unprocessed = append(unprocessed, *record)
+	}
+
+	return unprocessed, nil
 }
 
 type egressRecord struct {
-	// Partition key: "DATE#SHARD" (e.g., "2025-08-18#0")
-	// Where SHARD is a number 0-9 to distribute writes
-	PK string `dynamodbav:"PK"`
-
-	// Sort key: "RECEIVED_AT#NODE_ID#UNIQUE_ID"
-	// This allows sorting by time within each date partition
-	SK string `dynamodbav:"SK"`
-
+	Batch      string `dynamodbav:"batch"`
 	Node       string `dynamodbav:"node"`
-	Receipts   string `dynamodbav:"receipts"`
 	Endpoint   string `dynamodbav:"endpoint"`
 	Cause      []byte `dynamodbav:"cause"`
 	ReceivedAt string `dynamodbav:"receivedAt"`
 	Processed  bool   `dynamodbav:"proc"`
 }
 
-func newRecord(node did.DID, receipts ucan.Link, endpoint *url.URL, cause invocation.Invocation) (*egressRecord, error) {
-	// TODO: review keys to improve performance and access patterns
-	receivedAt := time.Now().UTC()
-	dateStr := receivedAt.Format("2006-01-02")
-	shard := rand.Intn(10)
-	pk := fmt.Sprintf("%s#%d", dateStr, shard)
-	sk := fmt.Sprintf("%s#%s#%s", dateStr, node, uuid.New())
+func newRecord(batch ucan.Link, node did.DID, endpoint *url.URL, cause invocation.Invocation) (*egressRecord, error) {
 	endpointStr, _ := url.PathUnescape(endpoint.String())
 
 	// binary values must be base64-encoded before sending them to DynamoDB
@@ -130,13 +101,11 @@ func newRecord(node did.DID, receipts ucan.Link, endpoint *url.URL, cause invoca
 	base64.StdEncoding.Encode(causeBytes, archBytes)
 
 	return &egressRecord{
-		PK:         pk,
-		SK:         sk,
+		Batch:      batch.String(),
 		Node:       node.String(),
-		Receipts:   receipts.String(),
 		Endpoint:   endpointStr,
 		Cause:      causeBytes,
-		ReceivedAt: receivedAt.Format(time.RFC3339),
+		ReceivedAt: time.Now().UTC().Format(time.RFC3339),
 		Processed:  false,
 	}, nil
 }
@@ -152,11 +121,11 @@ func (d *DynamoEgressTable) unmarshalRecord(item map[string]types.AttributeValue
 		return nil, fmt.Errorf("parsing node DID: %w", err)
 	}
 
-	c, err := cid.Decode(record.Receipts)
+	c, err := cid.Decode(record.Batch)
 	if err != nil {
-		return nil, fmt.Errorf("parsing receipts CID: %w", err)
+		return nil, fmt.Errorf("parsing batch CID: %w", err)
 	}
-	receipts := cidlink.Link{Cid: c}
+	batch := cidlink.Link{Cid: c}
 
 	archBytes := make([]byte, base64.StdEncoding.DecodedLen(len(record.Cause)))
 	if _, err := base64.StdEncoding.Decode(archBytes, record.Cause); err != nil {
@@ -174,10 +143,8 @@ func (d *DynamoEgressTable) unmarshalRecord(item map[string]types.AttributeValue
 	}
 
 	return &EgressRecord{
-		PK:         record.PK,
-		SK:         record.SK,
+		Batch:      batch,
 		Node:       node,
-		Receipts:   receipts,
 		Endpoint:   record.Endpoint,
 		Cause:      cause,
 		ReceivedAt: receivedAt,
@@ -190,8 +157,7 @@ func (d *DynamoEgressTable) MarkAsProcessed(ctx context.Context, records []Egres
 		_, err := d.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
 			TableName: aws.String(d.tableName),
 			Key: map[string]types.AttributeValue{
-				"PK": &types.AttributeValueMemberS{Value: record.PK},
-				"SK": &types.AttributeValueMemberS{Value: record.SK},
+				"batch": &types.AttributeValueMemberS{Value: record.Batch.String()},
 			},
 			UpdateExpression: aws.String("SET proc = :true"),
 			ExpressionAttributeValues: map[string]types.AttributeValue{
@@ -199,7 +165,7 @@ func (d *DynamoEgressTable) MarkAsProcessed(ctx context.Context, records []Egres
 			},
 		})
 		if err != nil {
-			return fmt.Errorf("marking record as processed (PK=%s, SK=%s): %w", record.PK, record.SK, err)
+			return fmt.Errorf("marking record as processed (batch=%s): %w", record.Batch.String(), err)
 		}
 	}
 	return nil
