@@ -72,16 +72,11 @@ module "app" {
       name = "egress-records"
       attributes = [
         {
-          name = "PK"
-          type = "S"
-        },
-        {
-          name = "SK"
+          name = "batch"
           type = "S"
         },
       ]
-      hash_key = "PK"
-      range_key ="SK"
+      hash_key = "batch"
     },
     {
       name = "consolidated-records"

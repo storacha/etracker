@@ -22,16 +22,12 @@
       "name": "egress-records",
       "attributes": [
         {
-          "name": "PK",
-          "type": "S"
-        },
-        {
-          "name": "SK",
+          "name": "batch",
           "type": "S"
         }
       ],
-      "hashKey": "PK",
-      "rangeKey": "SK"
+      "hashKey": "batch",
+      "rangeKey": ""
     },
     {
       "name": "consolidated-records",

@@ -25,7 +25,7 @@ func New(id principal.Signer, egressTable egress.EgressTable) (*Service, error) 
 }
 
 func (s *Service) Record(ctx context.Context, node did.DID, receipts ucan.Link, endpoint *url.URL, cause invocation.Invocation) error {
-	if err := s.egressTable.Record(ctx, node, receipts, endpoint, cause); err != nil {
+	if err := s.egressTable.Record(ctx, receipts, node, endpoint, cause); err != nil {
 		return err
 	}
 
