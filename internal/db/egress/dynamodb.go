@@ -23,12 +23,13 @@ import (
 var _ EgressTable = (*DynamoEgressTable)(nil)
 
 type DynamoEgressTable struct {
-	client    *dynamodb.Client
-	tableName string
+	client               *dynamodb.Client
+	tableName            string
+	unprocessedIndexName string
 }
 
-func NewDynamoEgressTable(client *dynamodb.Client, tableName string) *DynamoEgressTable {
-	return &DynamoEgressTable{client, tableName}
+func NewDynamoEgressTable(client *dynamodb.Client, tableName string, unprocessedIndexName string) *DynamoEgressTable {
+	return &DynamoEgressTable{client, tableName, unprocessedIndexName}
 }
 
 func (d *DynamoEgressTable) Record(ctx context.Context, batch ucan.Link, node did.DID, endpoint *url.URL, cause invocation.Invocation) error {
@@ -53,16 +54,14 @@ func (d *DynamoEgressTable) Record(ctx context.Context, batch ucan.Link, node di
 }
 
 func (d *DynamoEgressTable) GetUnprocessed(ctx context.Context, limit int) ([]EgressRecord, error) {
+	// Scan the sparse index which only contains unprocessed items (items with unprocessedSince attribute)
 	result, err := d.client.Scan(ctx, &dynamodb.ScanInput{
-		TableName:        aws.String(d.tableName),
-		FilterExpression: aws.String("proc = :false"),
-		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":false": &types.AttributeValueMemberBOOL{Value: false},
-		},
-		Limit: aws.Int32(int32(limit)),
+		TableName: aws.String(d.tableName),
+		IndexName: aws.String(d.unprocessedIndexName),
+		Limit:     aws.Int32(int32(limit)),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("querying unprocessed records: %w", err)
+		return nil, fmt.Errorf("scanning unprocessed records from index: %w", err)
 	}
 
 	var unprocessed []EgressRecord
@@ -78,13 +77,30 @@ func (d *DynamoEgressTable) GetUnprocessed(ctx context.Context, limit int) ([]Eg
 	return unprocessed, nil
 }
 
+func (d *DynamoEgressTable) MarkAsProcessed(ctx context.Context, records []EgressRecord) error {
+	for _, record := range records {
+		// Remove unprocessedSince to exclude item from the sparse index
+		_, err := d.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+			TableName: aws.String(d.tableName),
+			Key: map[string]types.AttributeValue{
+				"batch": &types.AttributeValueMemberS{Value: record.Batch.String()},
+			},
+			UpdateExpression: aws.String("REMOVE unprocessedSince"),
+		})
+		if err != nil {
+			return fmt.Errorf("marking record as processed (batch=%s): %w", record.Batch.String(), err)
+		}
+	}
+	return nil
+}
+
 type egressRecord struct {
-	Batch      string `dynamodbav:"batch"`
-	Node       string `dynamodbav:"node"`
-	Endpoint   string `dynamodbav:"endpoint"`
-	Cause      []byte `dynamodbav:"cause"`
-	ReceivedAt string `dynamodbav:"receivedAt"`
-	Processed  bool   `dynamodbav:"proc"`
+	Batch            string    `dynamodbav:"batch"`
+	Node             string    `dynamodbav:"node"`
+	Endpoint         string    `dynamodbav:"endpoint"`
+	Cause            []byte    `dynamodbav:"cause"`
+	ReceivedAt       time.Time `dynamodbav:"receivedAt"`
+	UnprocessedSince time.Time `dynamodbav:"unprocessedSince,omitempty"`
 }
 
 func newRecord(batch ucan.Link, node did.DID, endpoint *url.URL, cause invocation.Invocation) (*egressRecord, error) {
@@ -100,13 +116,15 @@ func newRecord(batch ucan.Link, node did.DID, endpoint *url.URL, cause invocatio
 	causeBytes := make([]byte, base64.StdEncoding.EncodedLen(len(archBytes)))
 	base64.StdEncoding.Encode(causeBytes, archBytes)
 
+	receivedAt := time.Now().UTC()
+
 	return &egressRecord{
-		Batch:      batch.String(),
-		Node:       node.String(),
-		Endpoint:   endpointStr,
-		Cause:      causeBytes,
-		ReceivedAt: time.Now().UTC().Format(time.RFC3339),
-		Processed:  false,
+		Batch:            batch.String(),
+		Node:             node.String(),
+		Endpoint:         endpointStr,
+		Cause:            causeBytes,
+		ReceivedAt:       receivedAt,
+		UnprocessedSince: receivedAt,
 	}, nil
 }
 
@@ -137,36 +155,11 @@ func (d *DynamoEgressTable) unmarshalRecord(item map[string]types.AttributeValue
 		return nil, fmt.Errorf("extracting cause: %w", err)
 	}
 
-	receivedAt, err := time.Parse(time.RFC3339, record.ReceivedAt)
-	if err != nil {
-		return nil, fmt.Errorf("parsing received at time: %w", err)
-	}
-
 	return &EgressRecord{
 		Batch:      batch,
 		Node:       node,
 		Endpoint:   record.Endpoint,
 		Cause:      cause,
-		ReceivedAt: receivedAt,
-		Processed:  record.Processed,
+		ReceivedAt: record.ReceivedAt,
 	}, nil
-}
-
-func (d *DynamoEgressTable) MarkAsProcessed(ctx context.Context, records []EgressRecord) error {
-	for _, record := range records {
-		_, err := d.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
-			TableName: aws.String(d.tableName),
-			Key: map[string]types.AttributeValue{
-				"batch": &types.AttributeValueMemberS{Value: record.Batch.String()},
-			},
-			UpdateExpression: aws.String("SET proc = :true"),
-			ExpressionAttributeValues: map[string]types.AttributeValue{
-				":true": &types.AttributeValueMemberBOOL{Value: true},
-			},
-		})
-		if err != nil {
-			return fmt.Errorf("marking record as processed (batch=%s): %w", record.Batch.String(), err)
-		}
-	}
-	return nil
 }

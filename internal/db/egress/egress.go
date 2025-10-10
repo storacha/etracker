@@ -16,7 +16,6 @@ type EgressRecord struct {
 	Endpoint   string
 	Cause      invocation.Invocation
 	ReceivedAt time.Time
-	Processed  bool
 }
 
 type EgressTable interface {
