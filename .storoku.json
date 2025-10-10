@@ -24,10 +24,26 @@
         {
           "name": "batch",
           "type": "S"
+        },
+        {
+          "name": "unprocessedSince",
+          "type": "S"
         }
       ],
       "hashKey": "batch",
-      "rangeKey": ""
+      "rangeKey": "",
+      "globalSecondaryIndexes": {
+        "unprocessed": {
+          "name": "unprocessed",
+          "hashKey": "batch",
+          "rangeKey": "unprocessedSince",
+          "projectionType": "INCLUDE",
+          "nonKeyAttributes": [
+            "node",
+            "cause"
+          ]
+        }
+      }
     },
     {
       "name": "consolidated-records",
