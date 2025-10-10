@@ -118,7 +118,7 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 		var rcpt capegress.ConsolidateReceipt
 		totalEgress := uint64(0)
 
-		bLog := log.With("node", record.Node, "batch", record.Receipts.String())
+		bLog := log.With("node", record.Node, "batch", record.Batch.String())
 
 		// According to the spec, consolidation happens as a result of a `space/egress/consolidate` invocation.
 		// We use the consolidator's own ucanto server to invoke the consolidate capability on itself.
