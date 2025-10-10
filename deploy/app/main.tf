@@ -40,7 +40,7 @@ provider "aws" {
 
 
 module "app" {
-  source = "github.com/storacha/storoku//app?ref=8aa313befb3153bab5d2a3743193fa81db641921"
+  source = "github.com/storacha/storoku//app?ref=5a15ae9cec329013721db1325eef54b11a213944"
   private_key = var.private_key
   private_key_env_var = "ETRACKER_PRIVATE_KEY"
   httpport = 8080
@@ -75,8 +75,21 @@ module "app" {
           name = "batch"
           type = "S"
         },
+        {
+          name = "unprocessedSince"
+          type = "S"
+        },
       ]
       hash_key = "batch"
+      global_secondary_indexes = [
+        {
+          name = "unprocessed"
+          hash_key = "batch"
+          range_key = "unprocessedSince"
+          projection_type = "INCLUDE"
+          non_key_attributes = ["node","cause",]
+        },
+      ]
     },
     {
       name = "consolidated-records"
