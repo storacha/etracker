@@ -64,6 +64,14 @@ func init() {
 	cobra.CheckErr(viper.BindEnv("egress_table_name", "EGRESS_RECORDS_TABLE_ID"))
 
 	startCmd.Flags().String(
+		"egress-unprocessed-index-name",
+		"",
+		"Name of the DynamoDB index to use for querying unprocessed egress records",
+	)
+	cobra.CheckErr(viper.BindPFlag("egress_unprocessed_index_name", startCmd.Flags().Lookup("egress-unprocessed-index-name")))
+	cobra.CheckErr(viper.BindEnv("egress_unprocessed_index_name", "EGRESS_RECORDS_UNPROCESSED_INDEX_NAME"))
+
+	startCmd.Flags().String(
 		"consolidated-table-name",
 		"",
 		"Name of the DynamoDB table to use for consolidated records",
@@ -115,7 +123,7 @@ func startService(cmd *cobra.Command, args []string) error {
 	dynamoClient := dynamodb.NewFromConfig(cfg.AWSConfig)
 
 	// Create database tables
-	egressTable := egress.NewDynamoEgressTable(dynamoClient, cfg.EgressTableName)
+	egressTable := egress.NewDynamoEgressTable(dynamoClient, cfg.EgressTableName, cfg.EgressUnprocessedIndexName)
 	consolidatedTable := consolidated.NewDynamoConsolidatedTable(dynamoClient, cfg.ConsolidatedTableName)
 
 	// Create service
