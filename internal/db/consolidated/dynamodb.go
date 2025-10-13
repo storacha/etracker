@@ -42,8 +42,9 @@ func (d *DynamoConsolidatedTable) Add(ctx context.Context, cause ucan.Link, node
 	}
 
 	_, err = d.client.PutItem(ctx, &dynamodb.PutItemInput{
-		TableName: aws.String(d.tableName),
-		Item:      item,
+		TableName:           aws.String(d.tableName),
+		Item:                item,
+		ConditionExpression: aws.String("attribute_not_exists(cause)"),
 	})
 	if err != nil {
 		return fmt.Errorf("storing consolidated record: %w", err)
