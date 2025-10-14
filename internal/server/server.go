@@ -32,6 +32,7 @@ type Server struct {
 	cfg       *config
 	ucantoSrv ucanto.ServerView[ucanto.Service]
 	cons      *consolidator.Consolidator
+	svc       *service.Service
 }
 
 func New(id principal.Signer, svc *service.Service, cons *consolidator.Consolidator, opts ...Option) (*Server, error) {
@@ -53,7 +54,7 @@ func New(id principal.Signer, svc *service.Service, cons *consolidator.Consolida
 		return nil, err
 	}
 
-	return &Server{cfg: cfg, ucantoSrv: ucantoSrv, cons: cons}, nil
+	return &Server{cfg: cfg, ucantoSrv: ucantoSrv, cons: cons, svc: svc}, nil
 }
 
 func (s *Server) ListenAndServe(addr string) error {
@@ -62,6 +63,7 @@ func (s *Server) ListenAndServe(addr string) error {
 	mux.HandleFunc("GET /", s.getRootHandler())
 	mux.HandleFunc("POST /", s.ucanHandler())
 	mux.HandleFunc("GET /receipts/{cid}", s.getReceiptsHandler())
+	mux.HandleFunc("GET /admin", s.getAdminHandler())
 
 	if s.cfg.metricsEndpointToken != "" {
 		if err := metrics.Init(); err != nil {
