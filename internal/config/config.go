@@ -19,7 +19,7 @@ type Config struct {
 	EgressUnprocessedIndexName     string     `mapstructure:"egress_unprocessed_index_name" validate:"required"`
 	ConsolidatedTableName          string     `mapstructure:"consolidated_table_name" validate:"required"`
 	ConsolidatedNodeStatsIndexName string     `mapstructure:"consolidated_node_stats_index_name" validate:"required"`
-	ConsolidationInterval          int        `mapstructure:"consolidation_interval" validate:"min=300"`
+	ConsolidationInterval          int        `mapstructure:"consolidation_interval" validate:"min=10"`
 	ConsolidationBatchSize         int        `mapstructure:"consolidation_batch_size" validate:"min=1"`
 }
 
