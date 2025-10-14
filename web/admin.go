@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	_ "embed"
 	"fmt"
 	"html/template"
@@ -14,6 +15,11 @@ import (
 
 var log = logging.Logger("web")
 
+// StatsService defines the interface for fetching node statistics
+type StatsService interface {
+	GetStats(ctx context.Context, node did.DID) (*service.Stats, error)
+}
+
 //go:embed templates/admin.html.tmpl
 var adminTemplateHTML string
 
@@ -24,7 +30,7 @@ type adminDashboardData struct {
 	NodeDID string
 	Stats   interface{}
 	Error   string
-	CSS     string
+	CSS     template.CSS
 }
 
 func formatBytes(b uint64) string {
@@ -49,7 +55,7 @@ func formatDate(t interface{}) string {
 }
 
 // AdminHandler returns an HTTP handler for the admin dashboard
-func AdminHandler(svc *service.Service) http.HandlerFunc {
+func AdminHandler(svc StatsService) http.HandlerFunc {
 	tmpl := template.Must(template.New("admin").Funcs(template.FuncMap{
 		"formatBytes": formatBytes,
 		"formatDate":  formatDate,
@@ -57,7 +63,7 @@ func AdminHandler(svc *service.Service) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		data := adminDashboardData{
-			CSS: adminCSS,
+			CSS: template.CSS(adminCSS),
 		}
 
 		nodeDIDStr := r.URL.Query().Get("node")
