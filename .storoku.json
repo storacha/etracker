@@ -51,6 +51,14 @@
         {
           "name": "cause",
           "type": "S"
+        },
+        {
+          "name": "node",
+          "type": "S"
+        },
+        {
+          "name": "processedAt",
+          "type": "S"
         }
       ],
       "hashKey": "cause",

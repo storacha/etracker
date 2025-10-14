@@ -40,7 +40,7 @@ provider "aws" {
 
 
 module "app" {
-  source = "github.com/storacha/storoku//app?ref=5a15ae9cec329013721db1325eef54b11a213944"
+  source = "github.com/storacha/storoku//app?ref=v0.4.5"
   private_key = var.private_key
   private_key_env_var = "ETRACKER_PRIVATE_KEY"
   httpport = 8080
@@ -113,8 +113,8 @@ module "app" {
           name = "node-stats"
           hash_key = "node"
           range_key = "processedAt"
-          projectionType = "INCLUDE"
-          nonKeyAttributes = ["totalEgress"]
+          projection_type = "INCLUDE"
+          non_key_attributes = ["totalEgress",]
         },
       ]
     },
