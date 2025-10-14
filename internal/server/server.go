@@ -8,6 +8,7 @@ import (
 	"github.com/storacha/go-ucanto/principal"
 	ucanto "github.com/storacha/go-ucanto/server"
 
+	"github.com/storacha/etracker/internal/consolidator"
 	"github.com/storacha/etracker/internal/metrics"
 	"github.com/storacha/etracker/internal/presets"
 	"github.com/storacha/etracker/internal/service"
@@ -30,9 +31,10 @@ func WithMetricsEndpoint(authToken string) Option {
 type Server struct {
 	cfg       *config
 	ucantoSrv ucanto.ServerView[ucanto.Service]
+	cons      *consolidator.Consolidator
 }
 
-func New(id principal.Signer, svc *service.Service, opts ...Option) (*Server, error) {
+func New(id principal.Signer, svc *service.Service, cons *consolidator.Consolidator, opts ...Option) (*Server, error) {
 	cfg := &config{}
 	for _, opt := range opts {
 		opt(cfg)
@@ -51,7 +53,7 @@ func New(id principal.Signer, svc *service.Service, opts ...Option) (*Server, er
 		return nil, err
 	}
 
-	return &Server{cfg: cfg, ucantoSrv: ucantoSrv}, nil
+	return &Server{cfg: cfg, ucantoSrv: ucantoSrv, cons: cons}, nil
 }
 
 func (s *Server) ListenAndServe(addr string) error {

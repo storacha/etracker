@@ -33,8 +33,8 @@ func NewDynamoEgressTable(client *dynamodb.Client, tableName string) *DynamoEgre
 	return &DynamoEgressTable{client, tableName}
 }
 
-func (d *DynamoEgressTable) Record(ctx context.Context, nodeID did.DID, receipts ucan.Link, endpoint *url.URL, cause invocation.Invocation) error {
-	record, err := newRecord(nodeID, receipts, endpoint, cause)
+func (d *DynamoEgressTable) Record(ctx context.Context, node did.DID, receipts ucan.Link, endpoint *url.URL, cause invocation.Invocation) error {
+	record, err := newRecord(node, receipts, endpoint, cause)
 	if err != nil {
 		return fmt.Errorf("creating egress record: %w", err)
 	}
@@ -102,7 +102,7 @@ type egressRecord struct {
 	// This allows sorting by time within each date partition
 	SK string `dynamodbav:"SK"`
 
-	NodeID     string `dynamodbav:"nodeID"`
+	Node       string `dynamodbav:"node"`
 	Receipts   string `dynamodbav:"receipts"`
 	Endpoint   string `dynamodbav:"endpoint"`
 	Cause      []byte `dynamodbav:"cause"`
@@ -110,13 +110,13 @@ type egressRecord struct {
 	Processed  bool   `dynamodbav:"proc"`
 }
 
-func newRecord(nodeID did.DID, receipts ucan.Link, endpoint *url.URL, cause invocation.Invocation) (*egressRecord, error) {
+func newRecord(node did.DID, receipts ucan.Link, endpoint *url.URL, cause invocation.Invocation) (*egressRecord, error) {
 	// TODO: review keys to improve performance and access patterns
 	receivedAt := time.Now().UTC()
 	dateStr := receivedAt.Format("2006-01-02")
 	shard := rand.Intn(10)
 	pk := fmt.Sprintf("%s#%d", dateStr, shard)
-	sk := fmt.Sprintf("%s#%s#%s", dateStr, nodeID, uuid.New())
+	sk := fmt.Sprintf("%s#%s#%s", dateStr, node, uuid.New())
 	endpointStr, _ := url.PathUnescape(endpoint.String())
 
 	// binary values must be base64-encoded before sending them to DynamoDB
@@ -132,7 +132,7 @@ func newRecord(nodeID did.DID, receipts ucan.Link, endpoint *url.URL, cause invo
 	return &egressRecord{
 		PK:         pk,
 		SK:         sk,
-		NodeID:     nodeID.String(),
+		Node:       node.String(),
 		Receipts:   receipts.String(),
 		Endpoint:   endpointStr,
 		Cause:      causeBytes,
@@ -147,7 +147,7 @@ func (d *DynamoEgressTable) unmarshalRecord(item map[string]types.AttributeValue
 		return nil, fmt.Errorf("unmarshaling egress record: %w", err)
 	}
 
-	nodeID, err := did.Parse(record.NodeID)
+	node, err := did.Parse(record.Node)
 	if err != nil {
 		return nil, fmt.Errorf("parsing node DID: %w", err)
 	}
@@ -176,7 +176,7 @@ func (d *DynamoEgressTable) unmarshalRecord(item map[string]types.AttributeValue
 	return &EgressRecord{
 		PK:         record.PK,
 		SK:         record.SK,
-		NodeID:     nodeID,
+		Node:       node,
 		Receipts:   receipts,
 		Endpoint:   record.Endpoint,
 		Cause:      cause,

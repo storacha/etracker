@@ -2,8 +2,9 @@ package consolidated
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
-	"iter"
+	"io"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -12,6 +13,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/ipfs/go-cid"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	capegress "github.com/storacha/go-libstoracha/capabilities/space/egress"
+	"github.com/storacha/go-ucanto/core/receipt"
 	"github.com/storacha/go-ucanto/did"
 	"github.com/storacha/go-ucanto/ucan"
 )
@@ -27,19 +30,10 @@ func NewDynamoConsolidatedTable(client *dynamodb.Client, tableName string) *Dyna
 	return &DynamoConsolidatedTable{client, tableName}
 }
 
-type consolidatedRecord struct {
-	NodeDID          string `dynamodbav:"NodeDID"`
-	ReceiptsBatchCID string `dynamodbav:"ReceiptsBatchCID"`
-	TotalBytes       uint64 `dynamodbav:"TotalBytes"`
-	ProcessedAt      string `dynamodbav:"ProcessedAt"`
-}
-
-func (d *DynamoConsolidatedTable) Add(ctx context.Context, nodeDID did.DID, receiptsBatchCID ucan.Link, bytes uint64) error {
-	record := consolidatedRecord{
-		NodeDID:          nodeDID.String(),
-		ReceiptsBatchCID: receiptsBatchCID.String(),
-		TotalBytes:       bytes,
-		ProcessedAt:      time.Now().UTC().Format(time.RFC3339),
+func (d *DynamoConsolidatedTable) Add(ctx context.Context, cause ucan.Link, node did.DID, totalEgress uint64, rcpt capegress.ConsolidateReceipt) error {
+	record, err := newConsolidatedRecord(cause, node, totalEgress, rcpt)
+	if err != nil {
+		return fmt.Errorf("creating consolidated record: %w", err)
 	}
 
 	item, err := attributevalue.MarshalMap(record)
@@ -58,70 +52,84 @@ func (d *DynamoConsolidatedTable) Add(ctx context.Context, nodeDID did.DID, rece
 	return nil
 }
 
-func (d *DynamoConsolidatedTable) Get(ctx context.Context, nodeDID did.DID, receiptsBatchCID ucan.Link) (ConsolidatedRecord, error) {
+func (d *DynamoConsolidatedTable) Get(ctx context.Context, cause ucan.Link) (*ConsolidatedRecord, error) {
 	result, err := d.client.GetItem(ctx, &dynamodb.GetItemInput{
 		TableName: aws.String(d.tableName),
 		Key: map[string]types.AttributeValue{
-			"NodeDID":          &types.AttributeValueMemberS{Value: nodeDID.String()},
-			"ReceiptsBatchCID": &types.AttributeValueMemberS{Value: receiptsBatchCID.String()},
+			"cause": &types.AttributeValueMemberS{Value: cause.String()},
 		},
 	})
 	if err != nil {
-		return ConsolidatedRecord{}, fmt.Errorf("getting consolidated record: %w", err)
+		return nil, fmt.Errorf("getting consolidated record: %w", err)
 	}
 
 	if result.Item == nil {
-		return ConsolidatedRecord{}, fmt.Errorf("record not found")
+		return nil, ErrNotFound
 	}
 
 	return d.unmarshalRecord(result.Item)
 }
 
-func (d *DynamoConsolidatedTable) List(ctx context.Context, nodeDID did.DID) (iter.Seq2[ConsolidatedRecord, error], error) {
-	result, err := d.client.Query(ctx, &dynamodb.QueryInput{
-		TableName:              aws.String(d.tableName),
-		KeyConditionExpression: aws.String("NodeDID = :nodeDID"),
-		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":nodeDID": &types.AttributeValueMemberS{Value: nodeDID.String()},
-		},
-	})
+type consolidatedRecord struct {
+	Cause       string    `dynamodbav:"cause"`
+	Node        string    `dynamodbav:"node"`
+	TotalEgress uint64    `dynamodbav:"totalEgress"`
+	Receipt     []byte    `dynamodbav:"receipt"`
+	ProcessedAt time.Time `dynamodbav:"processedAt"`
+}
+
+func newConsolidatedRecord(cause ucan.Link, node did.DID, totalEgress uint64, rcpt capegress.ConsolidateReceipt) (*consolidatedRecord, error) {
+	// binary values must be base64-encoded before sending them to DynamoDB
+	arch := rcpt.Archive()
+	archBytes, err := io.ReadAll(arch)
 	if err != nil {
-		return nil, fmt.Errorf("querying consolidated records by node: %w", err)
+		return nil, fmt.Errorf("reading receipt archive: %w", err)
 	}
 
-	return func(yield func(ConsolidatedRecord, error) bool) {
-		for _, item := range result.Items {
-			record, err := d.unmarshalRecord(item)
-			if err != nil {
-				if !yield(record, err) {
-					return
-				}
-			}
-		}
+	rcptBytes := make([]byte, base64.StdEncoding.EncodedLen(len(archBytes)))
+	base64.StdEncoding.Encode(rcptBytes, archBytes)
+
+	return &consolidatedRecord{
+		Cause:       cause.String(),
+		Node:        node.String(),
+		TotalEgress: totalEgress,
+		Receipt:     rcptBytes,
+		ProcessedAt: time.Now().UTC(),
 	}, nil
 }
 
-func (d *DynamoConsolidatedTable) unmarshalRecord(item map[string]types.AttributeValue) (ConsolidatedRecord, error) {
+func (d *DynamoConsolidatedTable) unmarshalRecord(item map[string]types.AttributeValue) (*ConsolidatedRecord, error) {
 	var record consolidatedRecord
 	if err := attributevalue.UnmarshalMap(item, &record); err != nil {
-		return ConsolidatedRecord{}, fmt.Errorf("unmarshaling consolidated record: %w", err)
+		return nil, fmt.Errorf("unmarshaling consolidated record: %w", err)
 	}
 
-	parsedDID, err := did.Parse(record.NodeDID)
+	node, err := did.Parse(record.Node)
 	if err != nil {
-		return ConsolidatedRecord{}, fmt.Errorf("parsing node DID: %w", err)
+		return nil, fmt.Errorf("parsing node DID: %w", err)
 	}
 
-	c, err := cid.Decode(record.ReceiptsBatchCID)
+	c, err := cid.Decode(record.Cause)
 	if err != nil {
-		return ConsolidatedRecord{}, fmt.Errorf("parsing receipts batch CID: %w", err)
+		return nil, fmt.Errorf("parsing cause CID: %w", err)
 	}
-	receiptsBatchCID := cidlink.Link{Cid: c}
+	cause := cidlink.Link{Cid: c}
 
-	return ConsolidatedRecord{
-		NodeDID:          parsedDID,
-		ReceiptsBatchCID: receiptsBatchCID,
-		TotalBytes:       record.TotalBytes,
-		ProcessedAt:      record.ProcessedAt,
+	archBytes := make([]byte, base64.StdEncoding.DecodedLen(len(record.Receipt)))
+	if _, err := base64.StdEncoding.Decode(archBytes, record.Receipt); err != nil {
+		return nil, fmt.Errorf("decoding receipt archive: %w", err)
+	}
+
+	rcpt, err := receipt.Extract(archBytes)
+	if err != nil {
+		return nil, fmt.Errorf("extracting receipt: %w", err)
+	}
+
+	return &ConsolidatedRecord{
+		Node:        node,
+		Cause:       cause,
+		TotalEgress: record.TotalEgress,
+		Receipt:     rcpt,
+		ProcessedAt: record.ProcessedAt,
 	}, nil
 }

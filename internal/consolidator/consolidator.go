@@ -35,6 +35,8 @@ import (
 
 var log = logging.Logger("consolidator")
 
+var ErrNotFound = consolidated.ErrNotFound
+
 type Consolidator struct {
 	id                principal.Signer
 	egressTable       egress.EgressTable
@@ -114,9 +116,9 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 	// Process each record (each record represents a batch of receipts for a single node)
 	for _, record := range records {
 		var rcpt capegress.ConsolidateReceipt
-		totalBytes := uint64(0)
+		totalEgress := uint64(0)
 
-		bLog := log.With("nodeID", record.NodeID, "batchCID", record.Receipts.String())
+		bLog := log.With("node", record.Node, "batch", record.Receipts.String())
 
 		// According to the spec, consolidation happens as a result of a `space/egress/consolidate` invocation.
 		// We use the consolidator's own ucanto server to invoke the consolidate capability on itself.
@@ -165,20 +167,20 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 		if x != emptyErr {
 			bLog.Errorf("invocation failed: %s", x.Message)
 		} else {
-			totalBytes = o.TotalEgress
+			totalEgress = o.TotalEgress
 		}
 
 		// Store consolidated record (one per batch)
-		if err := c.consolidatedTable.Add(ctx, record.NodeID, record.Receipts, totalBytes); err != nil {
+		if err := c.consolidatedTable.Add(ctx, consolidateInv.Link(), record.Node, totalEgress, rcpt); err != nil {
 			bLog.Errorf("Failed to add consolidated record: %v", err)
 			continue
 		}
 
 		// Increment consolidated bytes counter for this node
-		attributes := attribute.NewSet(attribute.String("node_id", record.NodeID.String()))
-		metrics.ConsolidatedBytesPerNode.Add(ctx, int64(totalBytes), metric.WithAttributeSet(attributes))
+		attributes := attribute.NewSet(attribute.String("node", record.Node.String()))
+		metrics.ConsolidatedBytesPerNode.Add(ctx, int64(totalEgress), metric.WithAttributeSet(attributes))
 
-		bLog.Infof("Consolidated %d bytes for node %s (batch %s)", totalBytes, record.NodeID, record.Receipts)
+		bLog.Infof("Consolidated %d bytes", totalEgress)
 	}
 
 	// Mark records as processed
@@ -273,7 +275,7 @@ func (c *Consolidator) ucanConsolidateHandler(
 	}
 
 	// Process each receipt in the batch
-	totalBytes := uint64(0)
+	totalEgress := uint64(0)
 	for rcpt, err := range receipts {
 		if err != nil {
 			log.Errorf("Failed to fetch receipt from batch: %v", err)
@@ -297,10 +299,10 @@ func (c *Consolidator) ucanConsolidateHandler(
 			continue
 		}
 
-		totalBytes += size
+		totalEgress += size
 	}
 
-	return result.Ok[capegress.ConsolidateOk, capegress.ConsolidateError](capegress.ConsolidateOk{TotalEgress: totalBytes}), nil, nil
+	return result.Ok[capegress.ConsolidateOk, capegress.ConsolidateError](capegress.ConsolidateOk{TotalEgress: totalEgress}), nil, nil
 }
 
 func (c *Consolidator) fetchReceipts(ctx context.Context, endpoint *url.URL, batchCID ucan.Link) (iter.Seq2[receipt.AnyReceipt, error], error) {
@@ -411,4 +413,13 @@ func (c *Consolidator) extractSize(retrievalRcpt receipt.Receipt[content.Retriev
 	}
 
 	return caveats.Range.End - caveats.Range.Start + 1, nil
+}
+
+func (c *Consolidator) GetReceipt(ctx context.Context, cause ucan.Link) (receipt.AnyReceipt, error) {
+	consRecord, err := c.consolidatedTable.Get(ctx, cause)
+	if err != nil {
+		return nil, err
+	}
+
+	return consRecord.Receipt, nil
 }
