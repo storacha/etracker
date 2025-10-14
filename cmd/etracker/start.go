@@ -19,6 +19,7 @@ import (
 	"github.com/storacha/etracker/internal/consolidator"
 	"github.com/storacha/etracker/internal/db/consolidated"
 	"github.com/storacha/etracker/internal/db/egress"
+	"github.com/storacha/etracker/internal/db/storageproviders"
 	"github.com/storacha/etracker/internal/server"
 	"github.com/storacha/etracker/internal/service"
 )
@@ -100,6 +101,9 @@ func init() {
 		"Number of records to process in each consolidation batch",
 	)
 	cobra.CheckErr(viper.BindPFlag("consolidation_batch_size", startCmd.Flags().Lookup("consolidation-batch-size")))
+
+	cobra.CheckErr(viper.BindEnv("external_storage_provider_table_name", "EXTERNAL_STORAGE_PROVIDER_TABLE_NAME"))
+	cobra.CheckErr(viper.BindEnv("external_storage_provider_table_region", "EXTERNAL_STORAGE_PROVIDER_TABLE_REGION"))
 }
 
 func startService(cmd *cobra.Command, args []string) error {
@@ -134,8 +138,12 @@ func startService(cmd *cobra.Command, args []string) error {
 	egressTable := egress.NewDynamoEgressTable(dynamoClient, cfg.EgressTableName, cfg.EgressUnprocessedIndexName)
 	consolidatedTable := consolidated.NewDynamoConsolidatedTable(dynamoClient, cfg.ConsolidatedTableName, cfg.ConsolidatedNodeStatsIndexName)
 
+	externalStorageProviderCfg := cfg.AWSConfig.Copy()
+	externalStorageProviderCfg.Region = cfg.ExternalStorageProviderTableRegion
+	externalStorageProviderTable := storageproviders.NewDynamoStorageProviderTable(dynamodb.NewFromConfig(externalStorageProviderCfg), cfg.ExternalStorageProviderTableName)
+
 	// Create service
-	svc, err := service.New(id, egressTable, consolidatedTable)
+	svc, err := service.New(id, egressTable, consolidatedTable, externalStorageProviderTable)
 	if err != nil {
 		return fmt.Errorf("creating service: %w", err)
 	}
