@@ -22,16 +22,28 @@
       "name": "egress-records",
       "attributes": [
         {
-          "name": "PK",
+          "name": "batch",
           "type": "S"
         },
         {
-          "name": "SK",
+          "name": "unprocessedSince",
           "type": "S"
         }
       ],
-      "hashKey": "PK",
-      "rangeKey": "SK"
+      "hashKey": "batch",
+      "rangeKey": "",
+      "globalSecondaryIndexes": {
+        "unprocessed": {
+          "name": "unprocessed",
+          "hashKey": "batch",
+          "rangeKey": "unprocessedSince",
+          "projectionType": "INCLUDE",
+          "nonKeyAttributes": [
+            "node",
+            "cause"
+          ]
+        }
+      }
     },
     {
       "name": "consolidated-records",

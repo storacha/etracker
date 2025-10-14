@@ -11,18 +11,15 @@ import (
 )
 
 type EgressRecord struct {
-	PK         string
-	SK         string
+	Batch      ucan.Link
 	Node       did.DID
-	Receipts   ucan.Link
 	Endpoint   string
 	Cause      invocation.Invocation
 	ReceivedAt time.Time
-	Processed  bool
 }
 
 type EgressTable interface {
-	Record(ctx context.Context, node did.DID, receipt ucan.Link, endpoint *url.URL, cause invocation.Invocation) error
+	Record(ctx context.Context, batch ucan.Link, node did.DID, endpoint *url.URL, cause invocation.Invocation) error
 	GetUnprocessed(ctx context.Context, limit int) ([]EgressRecord, error)
 	MarkAsProcessed(ctx context.Context, records []EgressRecord) error
 }
