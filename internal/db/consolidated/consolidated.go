@@ -24,4 +24,5 @@ var ErrNotFound = errors.New("record not found")
 type ConsolidatedTable interface {
 	Add(ctx context.Context, cause ucan.Link, node did.DID, totalEgress uint64, rcpt capegress.ConsolidateReceipt) error
 	Get(ctx context.Context, cause ucan.Link) (*ConsolidatedRecord, error)
+	GetStatsByNode(ctx context.Context, node did.DID, since time.Time) ([]ConsolidatedRecord, error)
 }
