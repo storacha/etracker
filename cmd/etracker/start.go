@@ -79,6 +79,14 @@ func init() {
 	cobra.CheckErr(viper.BindPFlag("consolidated_table_name", startCmd.Flags().Lookup("consolidated-table-name")))
 	cobra.CheckErr(viper.BindEnv("consolidated_table_name", "CONSOLIDATED_RECORDS_TABLE_ID"))
 
+	startCmd.Flags().String(
+		"consolidated-node-stats-index-name",
+		"",
+		"Name of the DynamoDB index to use for querying consolidated stats by node and time",
+	)
+	cobra.CheckErr(viper.BindPFlag("consolidated_node_stats_index_name", startCmd.Flags().Lookup("consolidated-node-stats-index-name")))
+	cobra.CheckErr(viper.BindEnv("consolidated_node_stats_index_name", "CONSOLIDATED_RECORDS_NODE_STATS_INDEX_NAME"))
+
 	startCmd.Flags().Int(
 		"consolidation-interval",
 		12*60*60,
@@ -124,10 +132,10 @@ func startService(cmd *cobra.Command, args []string) error {
 
 	// Create database tables
 	egressTable := egress.NewDynamoEgressTable(dynamoClient, cfg.EgressTableName, cfg.EgressUnprocessedIndexName)
-	consolidatedTable := consolidated.NewDynamoConsolidatedTable(dynamoClient, cfg.ConsolidatedTableName)
+	consolidatedTable := consolidated.NewDynamoConsolidatedTable(dynamoClient, cfg.ConsolidatedTableName, cfg.ConsolidatedNodeStatsIndexName)
 
 	// Create service
-	svc, err := service.New(id, egressTable)
+	svc, err := service.New(id, egressTable, consolidatedTable)
 	if err != nil {
 		return fmt.Errorf("creating service: %w", err)
 	}

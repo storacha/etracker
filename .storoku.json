@@ -54,7 +54,18 @@
         }
       ],
       "hashKey": "cause",
-      "rangeKey": ""
+      "rangeKey": "",
+      "globalSecondaryIndexes": {
+        "node-stats": {
+          "name": "node-stats",
+          "hashKey": "node",
+          "rangeKey": "processedAt",
+          "projectionType": "INCLUDE",
+          "nonKeyAttributes": [
+            "totalEgress"
+          ]
+        }
+      }
     }
   ],
   "networks": [

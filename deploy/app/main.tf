@@ -98,8 +98,25 @@ module "app" {
           name = "cause"
           type = "S"
         },
+        {
+          name = "node"
+          type = "S"
+        },
+        {
+          name = "processedAt"
+          type = "S"
+        },
       ]
       hash_key = "cause"
+      global_secondary_indexes = [
+        {
+          name = "node-stats"
+          hash_key = "node"
+          range_key = "processedAt"
+          projectionType = "INCLUDE"
+          nonKeyAttributes = ["totalEgress"]
+        },
+      ]
     },
   ]
   buckets = [
