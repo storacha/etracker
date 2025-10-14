@@ -41,25 +41,25 @@
                 <div class="stat-card">
                     <h3>Current Day</h3>
                     <div class="value">{{.Stats.CurrentDay.Egress | formatBytes}}</div>
-                    <div class="period">{{.Stats.CurrentDay.Period.From | formatDate}} - {{.Stats.CurrentDay.Period.To | formatDate}}</div>
+                    <div class="period">{{.Stats.CurrentDay.Period.From | formatDate}}<br>{{.Stats.CurrentDay.Period.To | formatDate}}</div>
                 </div>
 
                 <div class="stat-card">
                     <h3>Current Week</h3>
                     <div class="value">{{.Stats.CurrentWeek.Egress | formatBytes}}</div>
-                    <div class="period">{{.Stats.CurrentWeek.Period.From | formatDate}} - {{.Stats.CurrentWeek.Period.To | formatDate}}</div>
+                    <div class="period">{{.Stats.CurrentWeek.Period.From | formatDate}}<br>{{.Stats.CurrentWeek.Period.To | formatDate}}</div>
                 </div>
 
                 <div class="stat-card">
                     <h3>Current Month</h3>
                     <div class="value">{{.Stats.CurrentMonth.Egress | formatBytes}}</div>
-                    <div class="period">{{.Stats.CurrentMonth.Period.From | formatDate}} - {{.Stats.CurrentMonth.Period.To | formatDate}}</div>
+                    <div class="period">{{.Stats.CurrentMonth.Period.From | formatDate}}<br>{{.Stats.CurrentMonth.Period.To | formatDate}}</div>
                 </div>
 
                 <div class="stat-card">
                     <h3>Previous Month</h3>
                     <div class="value">{{.Stats.PreviousMonth.Egress | formatBytes}}</div>
-                    <div class="period">{{.Stats.PreviousMonth.Period.From | formatDate}} - {{.Stats.PreviousMonth.Period.To | formatDate}}</div>
+                    <div class="period">{{.Stats.PreviousMonth.Period.From | formatDate}}<br>{{.Stats.PreviousMonth.Period.To | formatDate}}</div>
                 </div>
             </div>
         </div>
