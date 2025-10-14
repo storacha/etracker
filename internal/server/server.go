@@ -12,6 +12,7 @@ import (
 	"github.com/storacha/etracker/internal/metrics"
 	"github.com/storacha/etracker/internal/presets"
 	"github.com/storacha/etracker/internal/service"
+	"github.com/storacha/etracker/web"
 )
 
 var log = logging.Logger("server")
@@ -63,7 +64,7 @@ func (s *Server) ListenAndServe(addr string) error {
 	mux.HandleFunc("GET /", s.getRootHandler())
 	mux.HandleFunc("POST /", s.ucanHandler())
 	mux.HandleFunc("GET /receipts/{cid}", s.getReceiptsHandler())
-	mux.HandleFunc("GET /admin", s.getAdminHandler())
+	mux.HandleFunc("GET /admin", web.AdminHandler(s.svc))
 
 	if s.cfg.metricsEndpointToken != "" {
 		if err := metrics.Init(); err != nil {

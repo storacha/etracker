@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>etracker Admin Dashboard</title>
+    <style>{{.CSS}}</style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💸 etracker</h1>
+            <p>Admin Dashboard - Node Statistics & Billing Metrics</p>
+        </div>
+
+        <div class="card">
+            <form method="GET" action="/admin">
+                <div class="form-group">
+                    <label for="node">Node DID</label>
+                    <input type="text" id="node" name="node" placeholder="did:key:..." value="{{.NodeDID}}" required>
+                </div>
+                <button type="submit">Get Stats</button>
+            </form>
+        </div>
+
+        {{if .Error}}
+        <div class="card">
+            <div class="error">{{.Error}}</div>
+        </div>
+        {{end}}
+
+        {{if .Stats}}
+        <div class="card">
+            <div class="node-info">
+                <strong>Node:</strong> {{.NodeDID}}
+            </div>
+
+            <h2 style="margin-bottom: 20px;">Node Statistics</h2>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Current Day</h3>
+                    <div class="value">{{.Stats.CurrentDay.Egress | formatBytes}}</div>
+                    <div class="period">{{.Stats.CurrentDay.Period.From | formatDate}} - {{.Stats.CurrentDay.Period.To | formatDate}}</div>
+                </div>
+
+                <div class="stat-card">
+                    <h3>Current Week</h3>
+                    <div class="value">{{.Stats.CurrentWeek.Egress | formatBytes}}</div>
+                    <div class="period">{{.Stats.CurrentWeek.Period.From | formatDate}} - {{.Stats.CurrentWeek.Period.To | formatDate}}</div>
+                </div>
+
+                <div class="stat-card">
+                    <h3>Current Month</h3>
+                    <div class="value">{{.Stats.CurrentMonth.Egress | formatBytes}}</div>
+                    <div class="period">{{.Stats.CurrentMonth.Period.From | formatDate}} - {{.Stats.CurrentMonth.Period.To | formatDate}}</div>
+                </div>
+
+                <div class="stat-card">
+                    <h3>Previous Month</h3>
+                    <div class="value">{{.Stats.PreviousMonth.Egress | formatBytes}}</div>
+                    <div class="period">{{.Stats.PreviousMonth.Period.From | formatDate}} - {{.Stats.PreviousMonth.Period.To | formatDate}}</div>
+                </div>
+            </div>
+        </div>
+        {{end}}
+    </div>
+</body>
+</html>
