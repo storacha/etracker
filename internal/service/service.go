@@ -147,6 +147,38 @@ func (s *Service) GetStats(ctx context.Context, node did.DID) (*Stats, error) {
 	}, nil
 }
 
-func (s *Service) GetStorageProviders(ctx context.Context) ([]storageproviders.StorageProviderRecord, error) {
-	return s.externalStorageProviderTable.GetAll(ctx)
+type ProviderWithStats struct {
+	Provider      storageproviders.StorageProviderRecord
+	Stats         *Stats
+	StatsError    error // If there was an error fetching stats for this provider
+}
+
+type GetAllProvidersStatsResult struct {
+	Providers []ProviderWithStats
+	NextToken *string
+}
+
+func (s *Service) GetAllProvidersStats(ctx context.Context, limit int, startToken *string) (*GetAllProvidersStatsResult, error) {
+	// Get providers with pagination
+	result, err := s.externalStorageProviderTable.GetAll(ctx, limit, startToken)
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch stats for each provider
+	providersWithStats := make([]ProviderWithStats, 0, len(result.Records))
+	for _, provider := range result.Records {
+		stats, err := s.GetStats(ctx, provider.Provider)
+
+		providersWithStats = append(providersWithStats, ProviderWithStats{
+			Provider:   provider,
+			Stats:      stats,
+			StatsError: err, // Store error so we can show partial results
+		})
+	}
+
+	return &GetAllProvidersStatsResult{
+		Providers: providersWithStats,
+		NextToken: result.NextToken,
+	}, nil
 }

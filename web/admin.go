@@ -8,16 +8,15 @@ import (
 	"net/http"
 
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/storacha/go-ucanto/did"
 
 	"github.com/storacha/etracker/internal/service"
 )
 
 var log = logging.Logger("web")
 
-// StatsService defines the interface for fetching node statistics
+// StatsService defines the interface for fetching provider statistics
 type StatsService interface {
-	GetStats(ctx context.Context, node did.DID) (*service.Stats, error)
+	GetAllProvidersStats(ctx context.Context, limit int, startToken *string) (*service.GetAllProvidersStatsResult, error)
 }
 
 //go:embed templates/admin.html.tmpl
@@ -27,10 +26,11 @@ var adminTemplateHTML string
 var adminCSS string
 
 type adminDashboardData struct {
-	NodeDID string
-	Stats   interface{}
-	Error   string
-	CSS     template.CSS
+	Providers []service.ProviderWithStats
+	NextToken *string
+	PrevToken *string
+	Error     string
+	CSS       template.CSS
 }
 
 func formatBytes(b uint64) string {
@@ -61,27 +61,24 @@ func AdminHandler(svc StatsService) http.HandlerFunc {
 		"formatDate":  formatDate,
 	}).Parse(adminTemplateHTML))
 
+	const defaultLimit = 20
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		data := adminDashboardData{
 			CSS: template.CSS(adminCSS),
 		}
 
-		nodeDIDStr := r.URL.Query().Get("node")
-		if nodeDIDStr == "" {
-			// Show form only
-			if err := tmpl.Execute(w, data); err != nil {
-				log.Errorf("executing admin template: %v", err)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-			}
-			return
+		// Get pagination token from query parameter
+		token := r.URL.Query().Get("token")
+		var startToken *string
+		if token != "" {
+			startToken = &token
 		}
 
-		data.NodeDID = nodeDIDStr
-
-		// Parse node DID
-		nodeDID, err := did.Parse(nodeDIDStr)
+		// Fetch all providers with their stats
+		result, err := svc.GetAllProvidersStats(r.Context(), defaultLimit, startToken)
 		if err != nil {
-			data.Error = fmt.Sprintf("Invalid node DID: %v", err)
+			data.Error = fmt.Sprintf("Error fetching providers: %v", err)
 			if err := tmpl.Execute(w, data); err != nil {
 				log.Errorf("executing admin template: %v", err)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -89,18 +86,11 @@ func AdminHandler(svc StatsService) http.HandlerFunc {
 			return
 		}
 
-		// Get stats from service
-		stats, err := svc.GetStats(r.Context(), nodeDID)
-		if err != nil {
-			data.Error = fmt.Sprintf("Error fetching stats: %v", err)
-			if err := tmpl.Execute(w, data); err != nil {
-				log.Errorf("executing admin template: %v", err)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-			}
-			return
+		data.Providers = result.Providers
+		data.NextToken = result.NextToken
+		if startToken != nil {
+			data.PrevToken = startToken // For "back" navigation (simplified)
 		}
-
-		data.Stats = stats
 
 		if err := tmpl.Execute(w, data); err != nil {
 			log.Errorf("executing admin template: %v", err)

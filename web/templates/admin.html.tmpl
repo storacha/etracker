@@ -10,17 +10,7 @@
     <div class="container">
         <div class="header">
             <h1>💸 etracker</h1>
-            <p>Admin Dashboard - Node Statistics & Billing Metrics</p>
-        </div>
-
-        <div class="card">
-            <form method="GET" action="/admin">
-                <div class="form-group">
-                    <label for="node">Node DID</label>
-                    <input type="text" id="node" name="node" placeholder="did:key:..." value="{{.NodeDID}}" required>
-                </div>
-                <button type="submit">Get Stats</button>
-            </form>
+            <p>Admin Dashboard - Storage Provider Statistics & Billing Metrics</p>
         </div>
 
         {{if .Error}}
@@ -29,39 +19,74 @@
         </div>
         {{end}}
 
-        {{if .Stats}}
+        {{if .Providers}}
         <div class="card">
-            <div class="node-info">
-                <strong>Node:</strong> {{.NodeDID}}
+            <div class="table-header">
+                <h2>Storage Providers</h2>
+                <span class="table-count">Showing {{len .Providers}} providers</span>
             </div>
 
-            <h2 style="margin-bottom: 20px;">Node Statistics</h2>
-
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <h3>Current Day</h3>
-                    <div class="value">{{.Stats.CurrentDay.Egress | formatBytes}}</div>
-                    <div class="period">{{.Stats.CurrentDay.Period.From | formatDate}}<br>{{.Stats.CurrentDay.Period.To | formatDate}}</div>
+            {{if index .Providers 0}}
+            {{with (index .Providers 0).Stats}}
+            <div class="period-info">
+                <div class="period-item">
+                    <strong>Current Day:</strong> {{.CurrentDay.Period.From | formatDate}} - {{.CurrentDay.Period.To | formatDate}}
                 </div>
-
-                <div class="stat-card">
-                    <h3>Current Week</h3>
-                    <div class="value">{{.Stats.CurrentWeek.Egress | formatBytes}}</div>
-                    <div class="period">{{.Stats.CurrentWeek.Period.From | formatDate}}<br>{{.Stats.CurrentWeek.Period.To | formatDate}}</div>
+                <div class="period-item">
+                    <strong>Current Week:</strong> {{.CurrentWeek.Period.From | formatDate}} - {{.CurrentWeek.Period.To | formatDate}}
                 </div>
-
-                <div class="stat-card">
-                    <h3>Current Month</h3>
-                    <div class="value">{{.Stats.CurrentMonth.Egress | formatBytes}}</div>
-                    <div class="period">{{.Stats.CurrentMonth.Period.From | formatDate}}<br>{{.Stats.CurrentMonth.Period.To | formatDate}}</div>
+                <div class="period-item">
+                    <strong>Current Month:</strong> {{.CurrentMonth.Period.From | formatDate}} - {{.CurrentMonth.Period.To | formatDate}}
                 </div>
-
-                <div class="stat-card">
-                    <h3>Previous Month</h3>
-                    <div class="value">{{.Stats.PreviousMonth.Egress | formatBytes}}</div>
-                    <div class="period">{{.Stats.PreviousMonth.Period.From | formatDate}}<br>{{.Stats.PreviousMonth.Period.To | formatDate}}</div>
+                <div class="period-item">
+                    <strong>Previous Month:</strong> {{.PreviousMonth.Period.From | formatDate}} - {{.PreviousMonth.Period.To | formatDate}}
                 </div>
             </div>
+            {{end}}
+            {{end}}
+
+            <div class="table-wrapper">
+                <table class="providers-table">
+                    <thead>
+                        <tr>
+                            <th class="col-operator">Operator Email</th>
+                            <th class="col-provider">Provider DID</th>
+                            <th class="col-stat">Current Day</th>
+                            <th class="col-stat">Current Week</th>
+                            <th class="col-stat">Current Month</th>
+                            <th class="col-stat">Previous Month</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .Providers}}
+                        <tr>
+                            <td class="operator-email">{{.Provider.OperatorEmail}}</td>
+                            <td class="provider-did" title="{{.Provider.Endpoint}}">{{.Provider.Provider.String}}</td>
+                            {{if .StatsError}}
+                            <td colspan="4" class="stats-error">Error: {{.StatsError.Error}}</td>
+                            {{else if .Stats}}
+                            <td class="stat-value">{{.Stats.CurrentDay.Egress | formatBytes}}</td>
+                            <td class="stat-value">{{.Stats.CurrentWeek.Egress | formatBytes}}</td>
+                            <td class="stat-value">{{.Stats.CurrentMonth.Egress | formatBytes}}</td>
+                            <td class="stat-value">{{.Stats.PreviousMonth.Egress | formatBytes}}</td>
+                            {{else}}
+                            <td colspan="4" class="no-stats">No stats available</td>
+                            {{end}}
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+
+            {{if .NextToken}}
+            <div class="pagination">
+                <a href="/admin?token={{.NextToken}}" class="pagination-btn">Next Page →</a>
+            </div>
+            {{end}}
+        </div>
+        {{else}}
+        <div class="card">
+            <p style="text-align: center; color: #6f6f6f; padding: 40px 0;">No storage providers found.</p>
         </div>
         {{end}}
     </div>

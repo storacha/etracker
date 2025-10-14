@@ -173,3 +173,152 @@ button:active {
     color: #0f62fe;
     font-weight: 600;
 }
+
+.table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.table-header h2 {
+    margin: 0;
+    font-size: 1.5em;
+    font-weight: 600;
+    color: #161616;
+}
+
+.table-count {
+    font-size: 0.9em;
+    color: #525252;
+}
+
+.period-info {
+    background: #f4f4f4;
+    padding: 16px 20px;
+    border-radius: 4px;
+    margin-bottom: 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 12px;
+    font-size: 0.875em;
+}
+
+.period-item {
+    color: #525252;
+}
+
+.period-item strong {
+    color: #161616;
+    font-weight: 600;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+    margin-bottom: 24px;
+}
+
+.providers-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em;
+}
+
+.providers-table thead {
+    background: #f4f4f4;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.providers-table th {
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 600;
+    color: #161616;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.providers-table th.col-stat {
+    text-align: right;
+}
+
+.providers-table tbody tr {
+    border-bottom: 1px solid #e0e0e0;
+    transition: background-color 0.15s;
+}
+
+.providers-table tbody tr:hover {
+    background: #f9f9f9;
+}
+
+.providers-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.providers-table td {
+    padding: 14px 16px;
+    color: #161616;
+}
+
+.providers-table td.operator-email {
+    font-weight: 500;
+}
+
+.providers-table td.provider-did {
+    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-size: 0.85em;
+    color: #525252;
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.providers-table td.stat-value {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+}
+
+.providers-table td.stats-error {
+    color: #da1e28;
+    font-size: 0.85em;
+    font-style: italic;
+}
+
+.providers-table td.no-stats {
+    color: #8d8d8d;
+    font-style: italic;
+    text-align: center;
+}
+
+.pagination {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+}
+
+.pagination-btn {
+    background: #0f62fe;
+    color: white;
+    text-decoration: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-weight: 500;
+    transition: all 0.2s;
+    display: inline-block;
+    font-size: 0.9em;
+}
+
+.pagination-btn:hover {
+    background: #0353e9;
+    box-shadow: 0 2px 8px rgba(15, 98, 254, 0.3);
+}
+
+.pagination-btn:active {
+    background: #002d9c;
+}
