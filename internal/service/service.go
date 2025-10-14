@@ -14,17 +14,19 @@ import (
 
 	"github.com/storacha/etracker/internal/db/consolidated"
 	"github.com/storacha/etracker/internal/db/egress"
+	"github.com/storacha/etracker/internal/db/storageproviders"
 	"github.com/storacha/etracker/internal/metrics"
 )
 
 type Service struct {
-	id                principal.Signer
-	egressTable       egress.EgressTable
-	consolidatedTable consolidated.ConsolidatedTable
+	id                           principal.Signer
+	egressTable                  egress.EgressTable
+	consolidatedTable            consolidated.ConsolidatedTable
+	externalStorageProviderTable storageproviders.StorageProviderTable
 }
 
-func New(id principal.Signer, egressTable egress.EgressTable, consolidatedTable consolidated.ConsolidatedTable) (*Service, error) {
-	return &Service{id: id, egressTable: egressTable, consolidatedTable: consolidatedTable}, nil
+func New(id principal.Signer, egressTable egress.EgressTable, consolidatedTable consolidated.ConsolidatedTable, externalStorageProviderTable storageproviders.StorageProviderTable) (*Service, error) {
+	return &Service{id: id, egressTable: egressTable, consolidatedTable: consolidatedTable, externalStorageProviderTable: externalStorageProviderTable}, nil
 }
 
 func (s *Service) Record(ctx context.Context, node did.DID, receipts ucan.Link, endpoint *url.URL, cause invocation.Invocation) error {
@@ -143,4 +145,8 @@ func (s *Service) GetStats(ctx context.Context, node did.DID) (*Stats, error) {
 			},
 		},
 	}, nil
+}
+
+func (s *Service) GetStorageProviders(ctx context.Context) ([]storageproviders.StorageProviderRecord, error) {
+	return s.externalStorageProviderTable.GetAll(ctx)
 }

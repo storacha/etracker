@@ -10,17 +10,19 @@ import (
 )
 
 type Config struct {
-	Port                           int        `mapstructure:"port" validate:"required,min=1,max=65535"`
-	PrivateKey                     string     `mapstructure:"private_key" validate:"required"`
-	DID                            string     `mapstructure:"did" validate:"startswith=did:web:"`
-	MetricsAuthToken               string     `mapstructure:"metrics_auth_token"`
-	AWSConfig                      aws.Config `mapstructure:"aws_config"`
-	EgressTableName                string     `mapstructure:"egress_table_name" validate:"required"`
-	EgressUnprocessedIndexName     string     `mapstructure:"egress_unprocessed_index_name" validate:"required"`
-	ConsolidatedTableName          string     `mapstructure:"consolidated_table_name" validate:"required"`
-	ConsolidatedNodeStatsIndexName string     `mapstructure:"consolidated_node_stats_index_name" validate:"required"`
-	ConsolidationInterval          int        `mapstructure:"consolidation_interval" validate:"min=300"`
-	ConsolidationBatchSize         int        `mapstructure:"consolidation_batch_size" validate:"min=1"`
+	Port                               int        `mapstructure:"port" validate:"required,min=1,max=65535"`
+	PrivateKey                         string     `mapstructure:"private_key" validate:"required"`
+	DID                                string     `mapstructure:"did" validate:"startswith=did:web:"`
+	MetricsAuthToken                   string     `mapstructure:"metrics_auth_token"`
+	AWSConfig                          aws.Config `mapstructure:"aws_config"`
+	EgressTableName                    string     `mapstructure:"egress_table_name" validate:"required"`
+	EgressUnprocessedIndexName         string     `mapstructure:"egress_unprocessed_index_name" validate:"required"`
+	ConsolidatedTableName              string     `mapstructure:"consolidated_table_name" validate:"required"`
+	ConsolidatedNodeStatsIndexName     string     `mapstructure:"consolidated_node_stats_index_name" validate:"required"`
+	ConsolidationInterval              int        `mapstructure:"consolidation_interval" validate:"min=300"`
+	ConsolidationBatchSize             int        `mapstructure:"consolidation_batch_size" validate:"min=1"`
+	ExternalStorageProviderTableName   string     `mapstructure:"external_storage_provider_table_name" validate:"required"`
+	ExternalStorageProviderTableRegion string     `mapstructure:"external_storage_provider_table_region" validate:"required"`
 }
 
 func Load(ctx context.Context) (*Config, error) {
