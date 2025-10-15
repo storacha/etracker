@@ -54,6 +54,8 @@ func init() {
 	cobra.CheckErr(viper.BindPFlag("did", startCmd.Flags().Lookup("did")))
 
 	cobra.CheckErr(viper.BindEnv("metrics_auth_token"))
+	cobra.CheckErr(viper.BindEnv("admin_dashboard_user"))
+	cobra.CheckErr(viper.BindEnv("admin_dashboard_password"))
 
 	startCmd.Flags().String(
 		"egress-table-name",
@@ -161,7 +163,7 @@ func startService(cmd *cobra.Command, args []string) error {
 	go cons.Start(ctx)
 
 	// Create server
-	server, err := server.New(id, svc, cons, server.WithMetricsEndpoint(cfg.MetricsAuthToken))
+	server, err := server.New(id, svc, cons, server.WithMetricsEndpoint(cfg.MetricsAuthToken), server.WithAdminCreds(cfg.AdminDashboardUser, cfg.AdminDashboardPassword))
 	if err != nil {
 		return fmt.Errorf("creating server: %w", err)
 	}

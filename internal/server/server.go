@@ -19,6 +19,8 @@ var log = logging.Logger("server")
 
 type config struct {
 	metricsEndpointToken string
+	adminUser            string
+	adminPassword        string
 }
 
 type Option func(*config)
@@ -26,6 +28,13 @@ type Option func(*config)
 func WithMetricsEndpoint(authToken string) Option {
 	return func(c *config) {
 		c.metricsEndpointToken = authToken
+	}
+}
+
+func WithAdminCreds(user, password string) Option {
+	return func(c *config) {
+		c.adminUser = user
+		c.adminPassword = password
 	}
 }
 
@@ -64,7 +73,11 @@ func (s *Server) ListenAndServe(addr string) error {
 	mux.HandleFunc("GET /", s.getRootHandler())
 	mux.HandleFunc("POST /", s.ucanHandler())
 	mux.HandleFunc("GET /receipts/{cid}", s.getReceiptsHandler())
-	mux.HandleFunc("GET /admin", web.AdminHandler(s.svc))
+
+	// Set up admin endpoint with authentication (handles both GET and POST)
+	adminHandler := web.BasicAuthMiddleware(web.AdminHandler(s.svc), s.cfg.adminUser, s.cfg.adminPassword)
+	mux.HandleFunc("GET /admin", adminHandler)
+	mux.HandleFunc("POST /admin", adminHandler)
 
 	if s.cfg.metricsEndpointToken != "" {
 		if err := metrics.Init(); err != nil {

@@ -14,6 +14,8 @@ type Config struct {
 	PrivateKey                         string     `mapstructure:"private_key" validate:"required"`
 	DID                                string     `mapstructure:"did" validate:"startswith=did:web:"`
 	MetricsAuthToken                   string     `mapstructure:"metrics_auth_token"`
+	AdminDashboardUser                 string     `mapstructure:"admin_dashboard_user"`
+	AdminDashboardPassword             string     `mapstructure:"admin_dashboard_password"`
 	AWSConfig                          aws.Config `mapstructure:"aws_config"`
 	EgressTableName                    string     `mapstructure:"egress_table_name" validate:"required"`
 	EgressUnprocessedIndexName         string     `mapstructure:"egress_unprocessed_index_name" validate:"required"`
