@@ -118,6 +118,10 @@ func main() {
 	// Create mock service
 	mockSvc := &mockService{}
 
+	// Default credentials for preview
+	username := "admin"
+	password := "password"
+
 	// Create HTTP server
 	mux := http.NewServeMux()
 
@@ -129,13 +133,18 @@ func main() {
 		// but the handler should work if embed is correct
 	})
 
-	mux.HandleFunc("/admin", web.AdminHandler(mockSvc))
+	// Wrap admin handler with authentication
+	adminHandler := web.BasicAuthMiddleware(web.AdminHandler(mockSvc), username, password)
+	mux.HandleFunc("/admin", adminHandler)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/admin", http.StatusFound)
 	})
 
 	fmt.Printf("🎨 Admin Dashboard Preview Server\n")
 	fmt.Printf("   Visit: http://localhost:%s/admin\n", port)
+	fmt.Printf("   Login with:\n")
+	fmt.Printf("     Username: %s\n", username)
+	fmt.Printf("     Password: %s\n", password)
 	fmt.Printf("   Shows all storage providers with their billing stats\n\n")
 
 	if err := http.ListenAndServe(":"+port, mux); err != nil {

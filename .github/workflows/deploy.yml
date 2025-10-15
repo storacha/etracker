@@ -33,6 +33,8 @@ jobs:
   #     region: ${{ secrets.STAGING_AWS_REGION }}
   #     private-key: ${{ secrets.STAGING_PRIVATE_KEY }}
   #     metrics-auth-token: ${{ secrets.STAGING_METRICS_AUTH_TOKEN }}
+  #     admin-dashboard-user: ${{ secrets.STAGING_ADMIN_DASHBOARD_USER }}
+  #     admin-dashboard-password: ${{ secrets.STAGING_ADMIN_DASHBOARD_PASSWORD }}
   #     cloudflare-zone-id: ${{ secrets.STAGING_CLOUDFLARE_ZONE_ID }}
   #     cloudflare-api-token: ${{ secrets.STAGING_CLOUDFLARE_API_TOKEN }}
 
@@ -50,6 +52,8 @@ jobs:
       region: ${{ secrets.WARM_STAGING_AWS_REGION }}
       private-key: ${{ secrets.WARM_STAGING_PRIVATE_KEY }}
       metrics-auth-token: ${{ secrets.WARM_STAGING_METRICS_AUTH_TOKEN }}
+      admin-dashboard-user: ${{ secrets.WARM_STAGING_ADMIN_DASHBOARD_USER }}
+      admin-dashboard-password: ${{ secrets.WARM_STAGING_ADMIN_DASHBOARD_PASSWORD }}
       cloudflare-zone-id: ${{ secrets.WARM_STAGING_CLOUDFLARE_ZONE_ID }}
       cloudflare-api-token: ${{ secrets.WARM_STAGING_CLOUDFLARE_API_TOKEN }}
 
@@ -67,5 +71,7 @@ jobs:
   #     region: ${{ secrets.PROD_AWS_REGION }}
   #     private-key: ${{ secrets.PROD_PRIVATE_KEY }}
   #     metrics-auth-token: ${{ secrets.PROD_METRICS_AUTH_TOKEN }}
+  #     admin-dashboard-user: ${{ secrets.PROD_ADMIN_DASHBOARD_USER }}
+  #     admin-dashboard-password: ${{ secrets.PROD_ADMIN_DASHBOARD_PASSWORD }}
   #     cloudflare-zone-id: ${{ secrets.PROD_CLOUDFLARE_ZONE_ID }}
   #     cloudflare-api-token: ${{ secrets.PROD_CLOUDFLARE_API_TOKEN }}

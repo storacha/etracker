@@ -15,6 +15,14 @@
     {
       "name": "ETRACKER_METRICS_AUTH_TOKEN",
       "variable": true
+    },
+    {
+      "name": "ETRACKER_ADMIN_DASHBOARD_USER",
+      "variable": true
+    },
+    {
+      "name": "ETRACKER_ADMIN_DASHBOARD_PASSWORD",
+      "variable": true
     }
   ],
   "tables": [

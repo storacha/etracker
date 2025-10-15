@@ -37,8 +37,6 @@ provider "aws" {
   alias = "acm"
 }
 
-
-
 module "app" {
   source = "github.com/storacha/storoku//app?ref=v0.4.5"
   private_key = var.private_key
@@ -62,6 +60,8 @@ module "app" {
   # as env vars in the container at runtime
   secrets = { 
     "ETRACKER_METRICS_AUTH_TOKEN" = var.metrics_auth_token
+    "ETRACKER_ADMIN_DASHBOARD_USER" = var.admin_dashboard_user
+    "ETRACKER_ADMIN_DASHBOARD_PASSWORD" = var.admin_dashboard_password
   }
   # enter any sqs queues you want to create here
   queues = []

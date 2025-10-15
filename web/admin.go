@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"crypto/subtle"
 	_ "embed"
 	"fmt"
 	"html/template"
@@ -25,12 +26,23 @@ var adminTemplateHTML string
 //go:embed static/css/admin.css
 var adminCSS string
 
+//go:embed templates/login.html.tmpl
+var loginTemplateHTML string
+
+//go:embed static/css/login.css
+var loginCSS string
+
 type adminDashboardData struct {
 	Providers []service.ProviderWithStats
 	NextToken *string
 	PrevToken *string
 	Error     string
 	CSS       template.CSS
+}
+
+type loginData struct {
+	Error string
+	CSS   template.CSS
 }
 
 func formatBytes(b uint64) string {
@@ -52,6 +64,72 @@ func formatDate(t interface{}) string {
 		return v.Format("2006-01-02 15:04 MST")
 	}
 	return fmt.Sprintf("%v", t)
+}
+
+// showLoginForm renders the login form
+func showLoginForm(w http.ResponseWriter, errorMsg string) {
+	tmpl := template.Must(template.New("login").Parse(loginTemplateHTML))
+	data := loginData{
+		Error: errorMsg,
+		CSS:   template.CSS(loginCSS),
+	}
+
+	if err := tmpl.Execute(w, data); err != nil {
+		log.Errorf("executing login template: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	}
+}
+
+// BasicAuthMiddleware wraps an HTTP handler with basic authentication
+func BasicAuthMiddleware(handler http.HandlerFunc, username, password string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Enforce that credentials are configured
+		if username == "" || password == "" {
+			log.Error("Admin dashboard credentials not configured - denying access")
+			http.Error(w, "Service Unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		// Handle login form submission (POST)
+		if r.Method == http.MethodPost {
+			if err := r.ParseForm(); err != nil {
+				showLoginForm(w, "Invalid form data")
+				return
+			}
+
+			formUser := r.FormValue("username")
+			formPass := r.FormValue("password")
+
+			// Use constant-time comparison to prevent timing attacks
+			userMatch := subtle.ConstantTimeCompare([]byte(formUser), []byte(username)) == 1
+			passMatch := subtle.ConstantTimeCompare([]byte(formPass), []byte(password)) == 1
+
+			if !userMatch || !passMatch {
+				showLoginForm(w, "Invalid username or password")
+				return
+			}
+
+			// Authentication successful, proceed to handler
+			handler(w, r)
+			return
+		}
+
+		// GET request - check for basic auth header
+		user, pass, ok := r.BasicAuth()
+		if ok {
+			// Use constant-time comparison to prevent timing attacks
+			userMatch := subtle.ConstantTimeCompare([]byte(user), []byte(username)) == 1
+			passMatch := subtle.ConstantTimeCompare([]byte(pass), []byte(password)) == 1
+
+			if userMatch && passMatch {
+				handler(w, r)
+				return
+			}
+		}
+
+		// No valid credentials - show login form
+		showLoginForm(w, "")
+	}
 }
 
 // AdminHandler returns an HTTP handler for the admin dashboard
