@@ -5,8 +5,8 @@
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    background: #f5f7fa;
+    font-family: 'Epilogue', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(180deg, #BDE0FF 0%, #f5f7fa 100%);
     min-height: 100vh;
     padding: 0;
 }
@@ -18,17 +18,17 @@ body {
 }
 
 .header {
-    background: linear-gradient(135deg, #0f62fe 0%, #002d9c 100%);
+    background: linear-gradient(135deg, #0176CE 0%, #015ba3 100%);
     color: white;
     padding: 48px 40px;
     margin-bottom: 40px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(1, 118, 206, 0.15);
 }
 
 .header h1 {
     font-size: 2.5em;
     margin-bottom: 8px;
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: -0.02em;
 }
 
@@ -40,11 +40,11 @@ body {
 
 .card {
     background: white;
-    border-radius: 8px;
+    border-radius: 12px;
     padding: 32px 40px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
     margin: 0 40px 32px 40px;
-    border: 1px solid #e0e0e0;
+    border: 1px solid rgba(1, 118, 206, 0.1);
 }
 
 .form-group {
@@ -55,7 +55,7 @@ label {
     display: block;
     font-weight: 600;
     margin-bottom: 10px;
-    color: #161616;
+    color: #000;
     font-size: 0.95em;
     letter-spacing: 0.01em;
 }
@@ -63,44 +63,44 @@ label {
 input[type="text"] {
     width: 100%;
     padding: 14px 16px;
-    border: 1px solid #c6c6c6;
-    border-radius: 4px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
     font-size: 1em;
     transition: all 0.2s;
     background: #ffffff;
-    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-family: 'DM Mono', 'Courier New', monospace;
 }
 
 input[type="text"]:hover {
-    border-color: #0f62fe;
+    border-color: #0176CE;
 }
 
 input[type="text"]:focus {
     outline: none;
-    border-color: #0f62fe;
-    box-shadow: 0 0 0 2px rgba(15, 98, 254, 0.1);
+    border-color: #0176CE;
+    box-shadow: 0 0 0 3px rgba(1, 118, 206, 0.1);
 }
 
 button {
-    background: #0f62fe;
+    background: #0176CE;
     color: white;
     border: none;
     padding: 14px 32px;
-    border-radius: 4px;
+    border-radius: 8px;
     font-size: 1em;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
-    letter-spacing: 0.01em;
+    font-family: 'Epilogue', sans-serif;
 }
 
 button:hover {
-    background: #0353e9;
-    box-shadow: 0 2px 8px rgba(15, 98, 254, 0.3);
+    background: #015ba3;
+    box-shadow: 0 4px 12px rgba(1, 118, 206, 0.3);
 }
 
 button:active {
-    background: #002d9c;
+    background: #014a85;
 }
 
 .stats-grid {
@@ -112,22 +112,22 @@ button:active {
 
 .stat-card {
     background: white;
-    border: 1px solid #e0e0e0;
+    border: 1px solid rgba(1, 118, 206, 0.1);
     padding: 28px;
-    border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
     transition: all 0.2s;
-    border-left: 4px solid #0f62fe;
+    border-left: 4px solid #0176CE;
 }
 
 .stat-card:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(1, 118, 206, 0.15);
     transform: translateY(-2px);
 }
 
 .stat-card h3 {
     font-size: 0.85em;
-    color: #525252;
+    color: #666;
     margin-bottom: 12px;
     text-transform: uppercase;
     letter-spacing: 0.8px;
@@ -136,41 +136,42 @@ button:active {
 
 .stat-card .value {
     font-size: 2.25em;
-    font-weight: 600;
+    font-weight: 700;
     margin-bottom: 12px;
-    color: #161616;
+    color: #000;
     letter-spacing: -0.02em;
 }
 
 .stat-card .period {
     font-size: 0.875em;
-    color: #6f6f6f;
+    color: #666;
     line-height: 1.5;
 }
 
 .error {
-    background: #fff1f1;
-    color: #da1e28;
+    background: #fff5f5;
+    color: #E91315;
     padding: 16px 20px;
-    border-radius: 4px;
+    border-radius: 8px;
     margin-bottom: 20px;
-    border-left: 4px solid #da1e28;
+    border-left: 4px solid #E91315;
     font-size: 0.95em;
+    font-weight: 500;
 }
 
 .node-info {
-    background: #f4f4f4;
+    background: #f9f9f9;
     padding: 16px 20px;
-    border-radius: 4px;
+    border-radius: 8px;
     margin-bottom: 28px;
     word-break: break-all;
-    border-left: 3px solid #0f62fe;
-    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    border-left: 3px solid #0176CE;
+    font-family: 'DM Mono', 'Courier New', monospace;
     font-size: 0.9em;
 }
 
 .node-info strong {
-    color: #0f62fe;
+    color: #0176CE;
     font-weight: 600;
 }
 
@@ -184,19 +185,19 @@ button:active {
 .table-header h2 {
     margin: 0;
     font-size: 1.5em;
-    font-weight: 600;
-    color: #161616;
+    font-weight: 700;
+    color: #000;
 }
 
 .table-count {
     font-size: 0.9em;
-    color: #525252;
+    color: #666;
 }
 
 .period-info {
-    background: #f4f4f4;
+    background: #f9f9f9;
     padding: 16px 20px;
-    border-radius: 4px;
+    border-radius: 8px;
     margin-bottom: 24px;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -205,11 +206,11 @@ button:active {
 }
 
 .period-item {
-    color: #525252;
+    color: #666;
 }
 
 .period-item strong {
-    color: #161616;
+    color: #000;
     font-weight: 600;
 }
 
@@ -225,15 +226,15 @@ button:active {
 }
 
 .providers-table thead {
-    background: #f4f4f4;
+    background: #f9f9f9;
     border-bottom: 2px solid #e0e0e0;
 }
 
 .providers-table th {
     padding: 12px 16px;
     text-align: left;
-    font-weight: 600;
-    color: #161616;
+    font-weight: 700;
+    color: #000;
     font-size: 0.85em;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -258,7 +259,7 @@ button:active {
 
 .providers-table td {
     padding: 14px 16px;
-    color: #161616;
+    color: #000;
 }
 
 .providers-table td.operator-email {
@@ -266,23 +267,21 @@ button:active {
 }
 
 .providers-table td.provider-did {
-    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    font-family: 'DM Mono', 'Courier New', monospace;
     font-size: 0.85em;
-    color: #525252;
-    max-width: 300px;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    color: #666;
     white-space: nowrap;
+    min-width: 480px;
 }
 
 .providers-table td.stat-value {
     text-align: right;
     font-variant-numeric: tabular-nums;
-    font-weight: 500;
+    font-weight: 600;
 }
 
 .providers-table td.stats-error {
-    color: #da1e28;
+    color: #E91315;
     font-size: 0.85em;
     font-style: italic;
 }
@@ -303,22 +302,22 @@ button:active {
 }
 
 .pagination-btn {
-    background: #0f62fe;
+    background: #0176CE;
     color: white;
     text-decoration: none;
     padding: 10px 20px;
-    border-radius: 4px;
-    font-weight: 500;
+    border-radius: 8px;
+    font-weight: 600;
     transition: all 0.2s;
     display: inline-block;
     font-size: 0.9em;
 }
 
 .pagination-btn:hover {
-    background: #0353e9;
-    box-shadow: 0 2px 8px rgba(15, 98, 254, 0.3);
+    background: #015ba3;
+    box-shadow: 0 4px 12px rgba(1, 118, 206, 0.3);
 }
 
 .pagination-btn:active {
-    background: #002d9c;
+    background: #014a85;
 }
