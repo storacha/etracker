@@ -148,9 +148,9 @@ func (s *Service) GetStats(ctx context.Context, node did.DID) (*Stats, error) {
 }
 
 type ProviderWithStats struct {
-	Provider      storageproviders.StorageProviderRecord
-	Stats         *Stats
-	StatsError    error // If there was an error fetching stats for this provider
+	Provider   storageproviders.StorageProviderRecord
+	Stats      *Stats
+	StatsError error // If there was an error fetching stats for this provider
 }
 
 type GetAllProvidersStatsResult struct {
