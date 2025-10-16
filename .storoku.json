@@ -82,6 +82,21 @@
           ]
         }
       }
+    },
+    {
+      "name": "space-stats",
+      "attributes": [
+        {
+          "name": "space",
+          "type": "S"
+        },
+        {
+          "name": "processedAtDate",
+          "type": "S"
+        }
+      ],
+      "hashKey": "space",
+      "rangeKey": "processedAtDate"
     }
   ],
   "networks": [
