@@ -23,6 +23,7 @@ type Config struct {
 	ConsolidatedNodeStatsIndexName string     `mapstructure:"consolidated_node_stats_index_name" validate:"required"`
 	ConsolidationInterval          int        `mapstructure:"consolidation_interval" validate:"min=300"`
 	ConsolidationBatchSize         int        `mapstructure:"consolidation_batch_size" validate:"min=1"`
+	SpaceStatsTableName            string     `mapstructure:"space_stats_table_name" validate:"required"`
 	StorageProviderTableName       string     `mapstructure:"storage_provider_table_name" validate:"required"`
 	StorageProviderTableRegion     string     `mapstructure:"storage_provider_table_region" validate:"required"`
 	CustomerTableName              string     `mapstructure:"customer_table_name" validate:"required"`

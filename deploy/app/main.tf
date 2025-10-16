@@ -118,6 +118,21 @@ module "app" {
         },
       ]
     },
+    {
+      name = "space-stats"
+      attributes = [
+        {
+          name = "space"
+          type = "S"
+        },
+        {
+          name = "processedAtDate"
+          type = "S"
+        },
+      ]
+      hash_key = "space"
+      range_key = "processedAtDate"
+    },
   ]
   buckets = [
   ]

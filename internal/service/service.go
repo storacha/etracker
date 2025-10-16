@@ -16,6 +16,7 @@ import (
 	"github.com/storacha/etracker/internal/db/consumer"
 	"github.com/storacha/etracker/internal/db/customer"
 	"github.com/storacha/etracker/internal/db/egress"
+	"github.com/storacha/etracker/internal/db/spacestats"
 	"github.com/storacha/etracker/internal/db/storageproviders"
 	"github.com/storacha/etracker/internal/metrics"
 )
@@ -27,6 +28,7 @@ type Service struct {
 	storageProviderTable storageproviders.StorageProviderTable
 	customerTable        customer.CustomerTable
 	consumerTable        consumer.ConsumerTable
+	spaceStatsTable      spacestats.SpaceStatsTable
 }
 
 func New(
@@ -36,6 +38,7 @@ func New(
 	storageProviderTable storageproviders.StorageProviderTable,
 	customerTable customer.CustomerTable,
 	consumerTable consumer.ConsumerTable,
+	spaceStatsTable spacestats.SpaceStatsTable,
 ) (*Service, error) {
 	return &Service{
 		id:                   id,
@@ -44,6 +47,7 @@ func New(
 		storageProviderTable: storageProviderTable,
 		customerTable:        customerTable,
 		consumerTable:        consumerTable,
+		spaceStatsTable:      spaceStatsTable,
 	}, nil
 }
 
