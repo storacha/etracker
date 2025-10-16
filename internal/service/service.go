@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"time"
 
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/storacha/go-ucanto/core/invocation"
 	"github.com/storacha/go-ucanto/did"
 	"github.com/storacha/go-ucanto/principal"
@@ -20,6 +21,8 @@ import (
 	"github.com/storacha/etracker/internal/db/storageproviders"
 	"github.com/storacha/etracker/internal/metrics"
 )
+
+var log = logging.Logger("service")
 
 type Service struct {
 	id                   principal.Signer
@@ -62,111 +65,20 @@ func (s *Service) Record(ctx context.Context, node did.DID, receipts ucan.Link, 
 	return nil
 }
 
-type Period struct {
-	From time.Time
-	To   time.Time
-}
-
-type PeriodStats struct {
-	Egress uint64
-	Period Period
-}
-
-type Stats struct {
-	PreviousMonth PeriodStats
-	CurrentMonth  PeriodStats
-	CurrentWeek   PeriodStats
-	CurrentDay    PeriodStats
-}
-
 func (s *Service) GetStats(ctx context.Context, node did.DID) (*Stats, error) {
-	now := time.Now().UTC()
-
-	// Calculate period boundaries
-	currentYear, currentMonth, currentDay := now.Date()
-
-	// Previous month: first day of previous month to last day of previous month
-	previousMonthStart := time.Date(currentYear, currentMonth-1, 1, 0, 0, 0, 0, time.UTC)
-	previousMonthEnd := time.Date(currentYear, currentMonth, 1, 0, 0, 0, 0, time.UTC).Add(-time.Second)
-
-	// Current month: first day of current month to now
-	currentMonthStart := time.Date(currentYear, currentMonth, 1, 0, 0, 0, 0, time.UTC)
-
-	// Current week: start of week (Monday) to now
-	weekday := now.Weekday()
-	// Convert Sunday (0) to 7 for easier calculation
-	if weekday == time.Sunday {
-		weekday = 7
-	}
-	daysFromMonday := int(weekday) - 1
-	currentWeekStart := time.Date(currentYear, currentMonth, currentDay-daysFromMonday, 0, 0, 0, 0, time.UTC)
-
-	// Current day: start of day to now
-	currentDayStart := time.Date(currentYear, currentMonth, currentDay, 0, 0, 0, 0, time.UTC)
+	stats := NewStats(time.Now().UTC())
 
 	// Get records from the beginning of previous month (earliest period we need)
-	records, err := s.consolidatedTable.GetStatsByNode(ctx, node, previousMonthStart)
+	records, err := s.consolidatedTable.GetStatsByNode(ctx, node, stats.Earliest())
 	if err != nil {
 		return nil, err
 	}
 
-	// Calculate stats for each period
-	var previousMonthEgress, currentMonthEgress, currentWeekEgress, currentDayEgress uint64
-
 	for _, record := range records {
-		processedAt := record.ProcessedAt
-
-		// Previous month
-		if !processedAt.Before(previousMonthStart) && processedAt.Before(currentMonthStart) {
-			previousMonthEgress += record.TotalEgress
-		}
-
-		// Current month
-		if !processedAt.Before(currentMonthStart) {
-			currentMonthEgress += record.TotalEgress
-		}
-
-		// Current week
-		if !processedAt.Before(currentWeekStart) {
-			currentWeekEgress += record.TotalEgress
-		}
-
-		// Current day
-		if !processedAt.Before(currentDayStart) {
-			currentDayEgress += record.TotalEgress
-		}
+		stats.AddEgress(record.TotalEgress, record.ProcessedAt)
 	}
 
-	return &Stats{
-		PreviousMonth: PeriodStats{
-			Egress: previousMonthEgress,
-			Period: Period{
-				From: previousMonthStart,
-				To:   previousMonthEnd,
-			},
-		},
-		CurrentMonth: PeriodStats{
-			Egress: currentMonthEgress,
-			Period: Period{
-				From: currentMonthStart,
-				To:   now,
-			},
-		},
-		CurrentWeek: PeriodStats{
-			Egress: currentWeekEgress,
-			Period: Period{
-				From: currentWeekStart,
-				To:   now,
-			},
-		},
-		CurrentDay: PeriodStats{
-			Egress: currentDayEgress,
-			Period: Period{
-				From: currentDayStart,
-				To:   now,
-			},
-		},
-	}, nil
+	return stats, nil
 }
 
 type ProviderWithStats struct {
@@ -203,4 +115,70 @@ func (s *Service) GetAllProvidersStats(ctx context.Context, limit int, startToke
 		Providers: providersWithStats,
 		NextToken: result.NextToken,
 	}, nil
+}
+
+type AccountStats struct {
+	Account    did.DID
+	Stats      *Stats
+	StatsError error // If there was an error fetching stats for this account
+}
+
+type GetAllAccountsStatsResult struct {
+	Accounts  []AccountStats
+	NextToken *string
+}
+
+func (s *Service) GetAllAccountsStats(ctx context.Context, limit int, startToken *string) (*GetAllAccountsStatsResult, error) {
+	// Get customers with pagination
+	result, err := s.customerTable.List(ctx, limit, startToken)
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch stats for each account
+	accountsWithStats := make([]AccountStats, 0, len(result.Customers))
+	for _, customerID := range result.Customers {
+		stats, err := s.getAccountStats(ctx, customerID)
+
+		accountsWithStats = append(accountsWithStats, AccountStats{
+			Account:    customerID,
+			Stats:      stats,
+			StatsError: err, // Store error so we can show partial results
+		})
+	}
+
+	return &GetAllAccountsStatsResult{
+		Accounts:  accountsWithStats,
+		NextToken: result.Cursor,
+	}, nil
+}
+
+// getAccountStats calculates aggregated stats for an account by fetching all spaces and their daily stats
+func (s *Service) getAccountStats(
+	ctx context.Context,
+	customerID did.DID,
+) (*Stats, error) {
+	stats := NewStats(time.Now().UTC())
+
+	// Get all spaces (consumers) for this account
+	spaces, err := s.consumerTable.ListByCustomer(ctx, customerID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Aggregate stats across all spaces
+	for _, space := range spaces {
+		// Fetch daily stats for this space from the beginning of previous month
+		dailyStats, err := s.spaceStatsTable.GetDailyStats(ctx, space, stats.Earliest())
+		if err != nil {
+			log.Error("failed to get daily stats for space", "space", space, "error", err)
+			continue
+		}
+
+		for _, stat := range dailyStats {
+			stats.AddEgress(stat.Egress, stat.Date)
+		}
+	}
+
+	return stats, err
 }
