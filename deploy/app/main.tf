@@ -37,10 +37,8 @@ provider "aws" {
   alias = "acm"
 }
 
-
-
 module "app" {
-  source = "github.com/storacha/storoku//app?ref=5a15ae9cec329013721db1325eef54b11a213944"
+  source = "github.com/storacha/storoku//app?ref=v0.4.5"
   private_key = var.private_key
   private_key_env_var = "ETRACKER_PRIVATE_KEY"
   httpport = 8080
@@ -62,6 +60,8 @@ module "app" {
   # as env vars in the container at runtime
   secrets = { 
     "ETRACKER_METRICS_AUTH_TOKEN" = var.metrics_auth_token
+    "ETRACKER_ADMIN_DASHBOARD_USER" = var.admin_dashboard_user
+    "ETRACKER_ADMIN_DASHBOARD_PASSWORD" = var.admin_dashboard_password
   }
   # enter any sqs queues you want to create here
   queues = []
@@ -98,8 +98,25 @@ module "app" {
           name = "cause"
           type = "S"
         },
+        {
+          name = "node"
+          type = "S"
+        },
+        {
+          name = "processedAt"
+          type = "S"
+        },
       ]
       hash_key = "cause"
+      global_secondary_indexes = [
+        {
+          name = "node-stats"
+          hash_key = "node"
+          range_key = "processedAt"
+          projection_type = "INCLUDE"
+          non_key_attributes = ["totalEgress",]
+        },
+      ]
     },
   ]
   buckets = [
