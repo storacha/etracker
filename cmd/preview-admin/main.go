@@ -105,6 +105,37 @@ func (m *mockService) GetAllProvidersStats(ctx context.Context, limit int, start
 	}, nil
 }
 
+func (m *mockService) GetAllAccountsStats(ctx context.Context, limit int, startToken *string) (*service.GetAllAccountsStatsResult, error) {
+	// Create mock accounts (customers) - using mailto DIDs
+	mockAccounts := []did.DID{
+		must(did.Parse("did:mailto:example.com:alice")),
+		must(did.Parse("did:mailto:example.com:bob")),
+		must(did.Parse("did:mailto:acme.org:charlie")),
+		must(did.Parse("did:mailto:startup.io:david")),
+		must(did.Parse("did:mailto:enterprise.com:eve")),
+		must(did.Parse("did:mailto:company.net:frank")),
+		must(did.Parse("did:mailto:business.io:grace")),
+	}
+
+	// Build accounts with stats - with varied data
+	accountsWithStats := make([]service.AccountStats, 0, len(mockAccounts))
+	multipliers := []float64{2.5, 1.8, 0.9, 3.2, 0.5, 1.2, 0.7} // Different usage levels
+	for i, account := range mockAccounts {
+		stats := m.getMockStats(account, multipliers[i])
+		accountsWithStats = append(accountsWithStats, service.AccountStats{
+			Account:    account,
+			Stats:      stats,
+			StatsError: nil,
+		})
+	}
+
+	// Simple pagination: no next token for mock data
+	return &service.GetAllAccountsStatsResult{
+		Accounts:  accountsWithStats,
+		NextToken: nil,
+	}, nil
+}
+
 func must[T any](v T, err error) T {
 	if err != nil {
 		panic(err)

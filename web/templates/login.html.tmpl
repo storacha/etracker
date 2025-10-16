@@ -18,7 +18,7 @@
             <div class="login-error">{{.Error}}</div>
             {{end}}
 
-            <form method="post" action="/admin" class="login-form">
+            <form method="post" action="{{.RequestURL}}" class="login-form">
                 <div class="form-group">
                     <label for="username">Username</label>
                     <input
