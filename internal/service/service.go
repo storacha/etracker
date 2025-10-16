@@ -13,20 +13,38 @@ import (
 	"go.opentelemetry.io/otel/metric"
 
 	"github.com/storacha/etracker/internal/db/consolidated"
+	"github.com/storacha/etracker/internal/db/consumer"
+	"github.com/storacha/etracker/internal/db/customer"
 	"github.com/storacha/etracker/internal/db/egress"
 	"github.com/storacha/etracker/internal/db/storageproviders"
 	"github.com/storacha/etracker/internal/metrics"
 )
 
 type Service struct {
-	id                           principal.Signer
-	egressTable                  egress.EgressTable
-	consolidatedTable            consolidated.ConsolidatedTable
-	externalStorageProviderTable storageproviders.StorageProviderTable
+	id                   principal.Signer
+	egressTable          egress.EgressTable
+	consolidatedTable    consolidated.ConsolidatedTable
+	storageProviderTable storageproviders.StorageProviderTable
+	customerTable        customer.CustomerTable
+	consumerTable        consumer.ConsumerTable
 }
 
-func New(id principal.Signer, egressTable egress.EgressTable, consolidatedTable consolidated.ConsolidatedTable, externalStorageProviderTable storageproviders.StorageProviderTable) (*Service, error) {
-	return &Service{id: id, egressTable: egressTable, consolidatedTable: consolidatedTable, externalStorageProviderTable: externalStorageProviderTable}, nil
+func New(
+	id principal.Signer,
+	egressTable egress.EgressTable,
+	consolidatedTable consolidated.ConsolidatedTable,
+	storageProviderTable storageproviders.StorageProviderTable,
+	customerTable customer.CustomerTable,
+	consumerTable consumer.ConsumerTable,
+) (*Service, error) {
+	return &Service{
+		id:                   id,
+		egressTable:          egressTable,
+		consolidatedTable:    consolidatedTable,
+		storageProviderTable: storageProviderTable,
+		customerTable:        customerTable,
+		consumerTable:        consumerTable,
+	}, nil
 }
 
 func (s *Service) Record(ctx context.Context, node did.DID, receipts ucan.Link, endpoint *url.URL, cause invocation.Invocation) error {
@@ -160,7 +178,7 @@ type GetAllProvidersStatsResult struct {
 
 func (s *Service) GetAllProvidersStats(ctx context.Context, limit int, startToken *string) (*GetAllProvidersStatsResult, error) {
 	// Get providers with pagination
-	result, err := s.externalStorageProviderTable.GetAll(ctx, limit, startToken)
+	result, err := s.storageProviderTable.GetAll(ctx, limit, startToken)
 	if err != nil {
 		return nil, err
 	}

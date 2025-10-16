@@ -1,16 +1,42 @@
 locals {
-    external_storage_provider_table_name = "${terraform.workspace == "prod" ? "prod-upload-api-storage-provider" : "staging-warm-upload-api-storage-provider"}"
-    external_storage_provider_table_region = "${terraform.workspace == "prod" ? "us-west-2" : "us-east-2"}"
+    storage_provider_table_name = "${terraform.workspace == "prod" ? "prod-upload-api-storage-provider" : "staging-warm-upload-api-storage-provider"}"
+    storage_provider_table_region = "${terraform.workspace == "prod" ? "us-west-2" : "us-east-2"}"
+
+    customer_table_name = "${terraform.workspace == "prod" ? "prod-upload-api-customer" : "staging-warm-upload-api-customer"}"
+    customer_table_region = "${terraform.workspace == "prod" ? "us-west-2" : "us-east-2"}"
+
+    consumer_table_name = "${terraform.workspace == "prod" ? "prod-upload-api-consumer" : "staging-warm-upload-api-consumer"}"
+    consumer_table_region = "${terraform.workspace == "prod" ? "us-west-2" : "us-east-2"}"
 }
 
 provider "aws" {
-  alias = "external_storage_provider"
-  region = local.external_storage_provider_table_region
+  alias = "storage_provider"
+  region = local.storage_provider_table_region
 }
 
-data "aws_dynamodb_table" "external_storage_provider_table" {
-  provider = aws.external_storage_provider
-  name = local.external_storage_provider_table_name
+data "aws_dynamodb_table" "storage_provider_table" {
+  provider = aws.storage_provider
+  name = local.storage_provider_table_name
+}
+
+provider "aws" {
+  alias = "customer"
+  region = local.customer_table_region
+}
+
+data "aws_dynamodb_table" "customer_table" {
+  provider = aws.customer
+  name = local.customer_table_name
+}
+
+provider "aws" {
+  alias = "consumer"
+  region = local.consumer_table_region
+}
+
+data "aws_dynamodb_table" "consumer_table" {
+  provider = aws.consumer
+  name = local.consumer_table_name
 }
 
 data "aws_iam_policy_document" "task_external_dynamodb_scan_query_document" {
@@ -20,8 +46,10 @@ data "aws_iam_policy_document" "task_external_dynamodb_scan_query_document" {
       "dynamodb:Query",
     ]
     resources = [
-      data.aws_dynamodb_table.external_storage_provider_table.arn,
-      "${data.aws_dynamodb_table.external_storage_provider_table.arn}/index/*",
+      data.aws_dynamodb_table.storage_provider_table.arn,
+      data.aws_dynamodb_table.customer_table.arn,
+      data.aws_dynamodb_table.consumer_table.arn,
+      "${data.aws_dynamodb_table.consumer_table.arn}/index/customer",
     ]
   }
 }
