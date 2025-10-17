@@ -32,8 +32,8 @@ func (d *DynamoSpaceStatsTable) Record(ctx context.Context, space did.DID, egres
 	_, err := d.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
 		TableName: aws.String(d.tableName),
 		Key: map[string]types.AttributeValue{
-			"space":        &types.AttributeValueMemberS{Value: space.String()},
-			"recordedDate": &types.AttributeValueMemberS{Value: date},
+			"space": &types.AttributeValueMemberS{Value: space.String()},
+			"date":  &types.AttributeValueMemberS{Value: date},
 		},
 		UpdateExpression: aws.String("ADD egress :egress"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
@@ -58,12 +58,16 @@ func (d *DynamoSpaceStatsTable) GetDailyStats(ctx context.Context, space did.DID
 	for {
 		input := &dynamodb.QueryInput{
 			TableName:              aws.String(d.tableName),
-			KeyConditionExpression: aws.String("space = :space AND recordedDate >= :since"),
+			KeyConditionExpression: aws.String("#space = :space AND #date >= :since"),
+			ExpressionAttributeNames: map[string]string{
+				"#space": "space",
+				"#date":  "date",
+			},
 			ExpressionAttributeValues: map[string]types.AttributeValue{
 				":space": &types.AttributeValueMemberS{Value: space.String()},
 				":since": &types.AttributeValueMemberS{Value: sinceDate},
 			},
-			ProjectionExpression: aws.String("recordedDate, egress"),
+			ProjectionExpression: aws.String("#date, egress"),
 		}
 
 		// Set the pagination token if we have one
@@ -97,7 +101,7 @@ func (d *DynamoSpaceStatsTable) GetDailyStats(ctx context.Context, space did.DID
 
 // dailyStatsRecord is the internal struct for unmarshaling from DynamoDB
 type dailyStatsRecord struct {
-	Date   string `dynamodbav:"recordedDate"`
+	Date   string `dynamodbav:"date"`
 	Egress uint64 `dynamodbav:"egress"`
 }
 
