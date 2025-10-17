@@ -44,7 +44,8 @@ func (d *DynamoEgressTable) Record(ctx context.Context, batch ucan.Link, node di
 	}
 
 	_, err = d.client.PutItem(ctx, &dynamodb.PutItemInput{
-		TableName: aws.String(d.tableName), Item: item,
+		TableName: aws.String(d.tableName),
+		Item:      item,
 	})
 	if err != nil {
 		return fmt.Errorf("storing egress record: %w", err)

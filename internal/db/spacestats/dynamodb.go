@@ -23,6 +23,30 @@ func NewDynamoSpaceStatsTable(client *dynamodb.Client, tableName string) *Dynamo
 	return &DynamoSpaceStatsTable{client, tableName}
 }
 
+func (d *DynamoSpaceStatsTable) Record(ctx context.Context, space did.DID, egress uint64) error {
+	// Format date as YYYY-MM-DD
+	date := time.Now().UTC().Format("2006-01-02")
+
+	// Use UpdateItem with ADD to atomically increment egress
+	// If the item doesn't exist, it will be created with the initial value
+	_, err := d.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName: aws.String(d.tableName),
+		Key: map[string]types.AttributeValue{
+			"space":        &types.AttributeValueMemberS{Value: space.String()},
+			"recordedDate": &types.AttributeValueMemberS{Value: date},
+		},
+		UpdateExpression: aws.String("ADD egress :egress"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":egress": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", egress)},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("recording space stats: %w", err)
+	}
+
+	return nil
+}
+
 func (d *DynamoSpaceStatsTable) GetDailyStats(ctx context.Context, space did.DID, since time.Time) ([]DailyStats, error) {
 	stats := make([]DailyStats, 0)
 	var exclusiveStartKey map[string]types.AttributeValue
@@ -34,12 +58,12 @@ func (d *DynamoSpaceStatsTable) GetDailyStats(ctx context.Context, space did.DID
 	for {
 		input := &dynamodb.QueryInput{
 			TableName:              aws.String(d.tableName),
-			KeyConditionExpression: aws.String("space = :space AND processedAtDate >= :since"),
+			KeyConditionExpression: aws.String("space = :space AND recordedDate >= :since"),
 			ExpressionAttributeValues: map[string]types.AttributeValue{
 				":space": &types.AttributeValueMemberS{Value: space.String()},
 				":since": &types.AttributeValueMemberS{Value: sinceDate},
 			},
-			ProjectionExpression: aws.String("processedAtDate, egress"),
+			ProjectionExpression: aws.String("recordedDate, egress"),
 		}
 
 		// Set the pagination token if we have one
@@ -73,7 +97,7 @@ func (d *DynamoSpaceStatsTable) GetDailyStats(ctx context.Context, space did.DID
 
 // dailyStatsRecord is the internal struct for unmarshaling from DynamoDB
 type dailyStatsRecord struct {
-	Date   string `dynamodbav:"processedAtDate"`
+	Date   string `dynamodbav:"recordedDate"`
 	Egress uint64 `dynamodbav:"egress"`
 }
 

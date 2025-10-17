@@ -22,6 +22,7 @@ import (
 	"github.com/storacha/go-ucanto/core/receipt/ran"
 	"github.com/storacha/go-ucanto/core/result"
 	fdm "github.com/storacha/go-ucanto/core/result/failure/datamodel"
+	"github.com/storacha/go-ucanto/did"
 	"github.com/storacha/go-ucanto/principal"
 	ucanto "github.com/storacha/go-ucanto/server"
 	"github.com/storacha/go-ucanto/ucan"
@@ -30,6 +31,7 @@ import (
 
 	"github.com/storacha/etracker/internal/db/consolidated"
 	"github.com/storacha/etracker/internal/db/egress"
+	"github.com/storacha/etracker/internal/db/spacestats"
 	"github.com/storacha/etracker/internal/metrics"
 )
 
@@ -41,6 +43,7 @@ type Consolidator struct {
 	id                principal.Signer
 	egressTable       egress.EgressTable
 	consolidatedTable consolidated.ConsolidatedTable
+	spaceStatsTable   spacestats.SpaceStatsTable
 	ucantoSrv         ucanto.ServerView[ucanto.Service]
 	httpClient        *http.Client
 	interval          time.Duration
@@ -48,11 +51,12 @@ type Consolidator struct {
 	stopCh            chan struct{}
 }
 
-func New(id principal.Signer, egressTable egress.EgressTable, consolidatedTable consolidated.ConsolidatedTable, interval time.Duration, batchSize int) (*Consolidator, error) {
+func New(id principal.Signer, egressTable egress.EgressTable, consolidatedTable consolidated.ConsolidatedTable, spaceStatsTable spacestats.SpaceStatsTable, interval time.Duration, batchSize int) (*Consolidator, error) {
 	c := &Consolidator{
 		id:                id,
 		egressTable:       egressTable,
 		consolidatedTable: consolidatedTable,
+		spaceStatsTable:   spaceStatsTable,
 		httpClient:        &http.Client{Timeout: 30 * time.Second},
 		interval:          interval,
 		batchSize:         batchSize,
@@ -276,6 +280,7 @@ func (c *Consolidator) ucanConsolidateHandler(
 
 	// Process each receipt in the batch
 	totalEgress := uint64(0)
+
 	for rcpt, err := range receipts {
 		if err != nil {
 			log.Errorf("Failed to fetch receipt from batch: %v", err)
@@ -293,10 +298,16 @@ func (c *Consolidator) ucanConsolidateHandler(
 			continue
 		}
 
-		size, err := c.extractSize(retrievalRcpt)
+		space, size, err := c.extractProperties(retrievalRcpt)
 		if err != nil {
 			log.Warnf("Failed to extract size from receipt: %v", err)
 			continue
+		}
+
+		// Record space stats
+		if err := c.spaceStatsTable.Record(ctx, space, size); err != nil {
+			log.Errorf("Failed to record space stats: %v", err)
+			// Continue processing even if stats recording fails
 		}
 
 		totalEgress += size
@@ -386,34 +397,41 @@ func (c *Consolidator) validateReceipt(retrievalRcpt receipt.Receipt[content.Ret
 	return nil
 }
 
-func (c *Consolidator) extractSize(retrievalRcpt receipt.Receipt[content.RetrieveOk, fdm.FailureModel]) (uint64, error) {
+func (c *Consolidator) extractProperties(retrievalRcpt receipt.Receipt[content.RetrieveOk, fdm.FailureModel]) (did.DID, uint64, error) {
 	_, x := result.Unwrap(retrievalRcpt.Out())
 	var emptyFailure fdm.FailureModel
 	if x != emptyFailure {
-		return 0, fmt.Errorf("receipt is a failure receipt")
+		return did.Undef, 0, fmt.Errorf("receipt is a failure receipt")
 	}
 
 	inv, ok := retrievalRcpt.Ran().Invocation()
 	if !ok {
-		return 0, fmt.Errorf("expected the ran invocation to be attached to the receipt")
+		return did.Undef, 0, fmt.Errorf("expected the ran invocation to be attached to the receipt")
 	}
 
 	caps := inv.Capabilities()
 	if len(caps) != 1 {
-		return 0, fmt.Errorf("expected exactly one capability in the invocation")
+		return did.Undef, 0, fmt.Errorf("expected exactly one capability in the invocation")
 	}
 
 	cap := caps[0]
 	if cap.Can() != content.RetrieveAbility {
-		return 0, fmt.Errorf("original invocation is not a retrieval invocation, but a %s", cap.Can())
+		return did.Undef, 0, fmt.Errorf("original invocation is not a retrieval invocation, but a %s one", cap.Can())
+	}
+
+	space, err := did.Parse(string(cap.With()))
+	if err != nil {
+		return did.Undef, 0, fmt.Errorf("parsing space from with %s: %w", cap.With(), err)
 	}
 
 	caveats, err := content.RetrieveCaveatsReader.Read(cap.Nb())
 	if err != nil {
-		return 0, fmt.Errorf("reading caveats from invocation: %w", err)
+		return did.Undef, 0, fmt.Errorf("reading caveats from invocation: %w", err)
 	}
 
-	return caveats.Range.End - caveats.Range.Start + 1, nil
+	size := caveats.Range.End - caveats.Range.Start + 1
+
+	return space, size, nil
 }
 
 func (c *Consolidator) GetReceipt(ctx context.Context, cause ucan.Link) (receipt.AnyReceipt, error) {
