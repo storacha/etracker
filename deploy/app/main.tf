@@ -126,12 +126,12 @@ module "app" {
           type = "S"
         },
         {
-          name = "recordedDate"
+          name = "date"
           type = "S"
         },
       ]
       hash_key = "space"
-      range_key = "recordedDate"
+      range_key = "date"
     },
   ]
   buckets = [
