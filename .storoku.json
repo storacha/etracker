@@ -91,12 +91,12 @@
           "type": "S"
         },
         {
-          "name": "processedAtDate",
+          "name": "recordedDate",
           "type": "S"
         }
       ],
       "hashKey": "space",
-      "rangeKey": "processedAtDate"
+      "rangeKey": "recordedDate"
     }
   ],
   "networks": [
