@@ -1,0 +1,323 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Epilogue', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(180deg, #BDE0FF 0%, #f5f7fa 100%);
+    min-height: 100vh;
+    padding: 0;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0;
+}
+
+.header {
+    background: linear-gradient(135deg, #0176CE 0%, #015ba3 100%);
+    color: white;
+    padding: 48px 40px;
+    margin-bottom: 40px;
+    box-shadow: 0 4px 12px rgba(1, 118, 206, 0.15);
+}
+
+.header h1 {
+    font-size: 2.5em;
+    margin-bottom: 8px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.header p {
+    font-size: 1.1em;
+    opacity: 0.95;
+    font-weight: 400;
+}
+
+.card {
+    background: white;
+    border-radius: 12px;
+    padding: 32px 40px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    margin: 0 40px 32px 40px;
+    border: 1px solid rgba(1, 118, 206, 0.1);
+}
+
+.form-group {
+    margin-bottom: 24px;
+}
+
+label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #000;
+    font-size: 0.95em;
+    letter-spacing: 0.01em;
+}
+
+input[type="text"] {
+    width: 100%;
+    padding: 14px 16px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 1em;
+    transition: all 0.2s;
+    background: #ffffff;
+    font-family: 'DM Mono', 'Courier New', monospace;
+}
+
+input[type="text"]:hover {
+    border-color: #0176CE;
+}
+
+input[type="text"]:focus {
+    outline: none;
+    border-color: #0176CE;
+    box-shadow: 0 0 0 3px rgba(1, 118, 206, 0.1);
+}
+
+button {
+    background: #0176CE;
+    color: white;
+    border: none;
+    padding: 14px 32px;
+    border-radius: 8px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Epilogue', sans-serif;
+}
+
+button:hover {
+    background: #015ba3;
+    box-shadow: 0 4px 12px rgba(1, 118, 206, 0.3);
+}
+
+button:active {
+    background: #014a85;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+    margin-top: 24px;
+}
+
+.stat-card {
+    background: white;
+    border: 1px solid rgba(1, 118, 206, 0.1);
+    padding: 28px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    transition: all 0.2s;
+    border-left: 4px solid #0176CE;
+}
+
+.stat-card:hover {
+    box-shadow: 0 4px 12px rgba(1, 118, 206, 0.15);
+    transform: translateY(-2px);
+}
+
+.stat-card h3 {
+    font-size: 0.85em;
+    color: #666;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-weight: 600;
+}
+
+.stat-card .value {
+    font-size: 2.25em;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: #000;
+    letter-spacing: -0.02em;
+}
+
+.stat-card .period {
+    font-size: 0.875em;
+    color: #666;
+    line-height: 1.5;
+}
+
+.error {
+    background: #fff5f5;
+    color: #E91315;
+    padding: 16px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border-left: 4px solid #E91315;
+    font-size: 0.95em;
+    font-weight: 500;
+}
+
+.node-info {
+    background: #f9f9f9;
+    padding: 16px 20px;
+    border-radius: 8px;
+    margin-bottom: 28px;
+    word-break: break-all;
+    border-left: 3px solid #0176CE;
+    font-family: 'DM Mono', 'Courier New', monospace;
+    font-size: 0.9em;
+}
+
+.node-info strong {
+    color: #0176CE;
+    font-weight: 600;
+}
+
+.table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.table-header h2 {
+    margin: 0;
+    font-size: 1.5em;
+    font-weight: 700;
+    color: #000;
+}
+
+.table-count {
+    font-size: 0.9em;
+    color: #666;
+}
+
+.period-info {
+    background: #f9f9f9;
+    padding: 16px 20px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 12px;
+    font-size: 0.875em;
+}
+
+.period-item {
+    color: #666;
+}
+
+.period-item strong {
+    color: #000;
+    font-weight: 600;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+    margin-bottom: 24px;
+}
+
+.providers-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em;
+}
+
+.providers-table thead {
+    background: #f9f9f9;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.providers-table th {
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 700;
+    color: #000;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.providers-table th.col-stat {
+    text-align: right;
+}
+
+.providers-table tbody tr {
+    border-bottom: 1px solid #e0e0e0;
+    transition: background-color 0.15s;
+}
+
+.providers-table tbody tr:hover {
+    background: #f9f9f9;
+}
+
+.providers-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.providers-table td {
+    padding: 14px 16px;
+    color: #000;
+}
+
+.providers-table td.operator-email {
+    font-weight: 500;
+}
+
+.providers-table td.provider-did {
+    font-family: 'DM Mono', 'Courier New', monospace;
+    font-size: 0.85em;
+    color: #666;
+    white-space: nowrap;
+    min-width: 480px;
+}
+
+.providers-table td.stat-value {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+.providers-table td.stats-error {
+    color: #E91315;
+    font-size: 0.85em;
+    font-style: italic;
+}
+
+.providers-table td.no-stats {
+    color: #8d8d8d;
+    font-style: italic;
+    text-align: center;
+}
+
+.pagination {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+}
+
+.pagination-btn {
+    background: #0176CE;
+    color: white;
+    text-decoration: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.2s;
+    display: inline-block;
+    font-size: 0.9em;
+}
+
+.pagination-btn:hover {
+    background: #015ba3;
+    box-shadow: 0 4px 12px rgba(1, 118, 206, 0.3);
+}
+
+.pagination-btn:active {
+    background: #014a85;
+}

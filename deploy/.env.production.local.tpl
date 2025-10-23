@@ -1,6 +1,12 @@
-# Place any environment variables you want to available to your docker container 
-# here. If you want to use different values based on terraform vars or other 
-# values in env.terraform.tpl, this script is processed by ESH 
-# (https://github.com/jirutka/esh) and copied to env.production.local before it 
-# is used, so you can use that functionality to interpolate variables and 
-# generally do conditional rendering based on bash scripting.
+<%
+if [ "$TF_WORKSPACE" == "prod" ]; then
+  EXTERNAL_STORAGE_PROVIDER_TABLE_NAME="prod-upload-api-storage-provider"
+  EXTERNAL_STORAGE_PROVIDER_TABLE_REGION="us-west-2"
+else
+  EXTERNAL_STORAGE_PROVIDER_TABLE_NAME="staging-warm-upload-api-storage-provider"
+  EXTERNAL_STORAGE_PROVIDER_TABLE_REGION="us-east-2"
+fi
+%>
+
+EXTERNAL_STORAGE_PROVIDER_TABLE_NAME=<%= $EXTERNAL_STORAGE_PROVIDER_TABLE_NAME %>
+EXTERNAL_STORAGE_PROVIDER_TABLE_REGION=<%= $EXTERNAL_STORAGE_PROVIDER_TABLE_REGION %>

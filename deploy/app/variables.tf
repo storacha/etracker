@@ -55,3 +55,13 @@ variable "metrics_auth_token" {
   description = "value for metrics_auth_token secret"
   type = string
 }
+
+variable "admin_dashboard_user" {
+  description = "value for admin_dashboard_user secret"
+  type = string
+}
+
+variable "admin_dashboard_password" {
+  description = "value for admin_dashboard_password secret"
+  type = string
+}
