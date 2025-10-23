@@ -334,7 +334,6 @@ func (c *Consolidator) fetchReceipts(ctx context.Context, endpoint *url.URL, bat
 	if err != nil {
 		return nil, fmt.Errorf("fetching receipts from %s: %w", batchURL.String(), err)
 	}
-	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
@@ -347,6 +346,8 @@ func (c *Consolidator) fetchReceipts(ctx context.Context, endpoint *url.URL, bat
 	}
 
 	return func(yield func(receipt.AnyReceipt, error) bool) {
+		defer resp.Body.Close()
+
 		for blk, err := range blks {
 			if err != nil {
 				if !yield(nil, fmt.Errorf("iterating over batch blocks: %w", err)) {
