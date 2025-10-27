@@ -14,9 +14,9 @@ import (
 var _ ConsumerTable = (*DynamoConsumerTable)(nil)
 
 type DynamoConsumerTable struct {
-	client              *dynamodb.Client
-	tableName           string
-	customerIndexName   string
+	client            *dynamodb.Client
+	tableName         string
+	customerIndexName string
 }
 
 func NewDynamoConsumerTable(client *dynamodb.Client, tableName string, customerIndexName string) *DynamoConsumerTable {
