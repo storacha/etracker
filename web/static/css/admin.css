@@ -21,7 +21,7 @@ body {
     background: linear-gradient(135deg, #0176CE 0%, #015ba3 100%);
     color: white;
     padding: 48px 40px;
-    margin-bottom: 40px;
+    margin-bottom: 0;
     box-shadow: 0 4px 12px rgba(1, 118, 206, 0.15);
 }
 
@@ -36,6 +36,37 @@ body {
     font-size: 1.1em;
     opacity: 0.95;
     font-weight: 400;
+}
+
+.tabs {
+    background: white;
+    padding: 0 40px;
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid #e0e0e0;
+    margin-bottom: 40px;
+}
+
+.tab-link {
+    padding: 16px 32px;
+    text-decoration: none;
+    color: #666;
+    font-weight: 600;
+    font-size: 0.95em;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+    position: relative;
+    top: 2px;
+}
+
+.tab-link:hover {
+    color: #0176CE;
+    background: #f9f9f9;
+}
+
+.tab-link.active {
+    color: #0176CE;
+    border-bottom-color: #0176CE;
 }
 
 .card {
@@ -271,7 +302,16 @@ button:active {
     font-size: 0.85em;
     color: #666;
     white-space: nowrap;
-    min-width: 480px;
+    min-width: 400px;
+}
+
+.providers-table td.account-did {
+    font-family: 'DM Mono', 'Courier New', monospace;
+    font-size: 0.85em;
+    color: #666;
+    white-space: nowrap;
+    min-width: 400px;
+    font-weight: 500;
 }
 
 .providers-table td.stat-value {
