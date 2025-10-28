@@ -10,6 +10,7 @@ import (
 
 var principalMapping = map[string]string{
 	"did:web:staging.registrar.storacha.network": "did:key:z6MkuQ8PfSMrzXCwZkbQv662nZC4FGGm1aucbH256HXXZyxo",
+	"did:web:staging.registrar.warm.storacha.network": "did:key:z6MkuQ8PfSMrzXCwZkbQv662nZC4FGGm1aucbH256HXXZyxo",
 }
 
 type resolver struct {
