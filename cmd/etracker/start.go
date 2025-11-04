@@ -118,7 +118,15 @@ func init() {
 
 	cobra.CheckErr(viper.BindEnv("consumer_table_name", "CONSUMER_TABLE_NAME"))
 	cobra.CheckErr(viper.BindEnv("consumer_table_region", "CONSUMER_TABLE_REGION"))
+	cobra.CheckErr(viper.BindEnv("consumer_consumer_index_name", "CONSUMER_CONSUMER_INDEX_NAME"))
 	cobra.CheckErr(viper.BindEnv("consumer_customer_index_name", "CONSUMER_CUSTOMER_INDEX_NAME"))
+
+	startCmd.Flags().StringSlice(
+		"known-providers",
+		presets.KnownProviders,
+		"List of known provider DIDs (defaults to presets if not specified)",
+	)
+	cobra.CheckErr(viper.BindPFlag("known_providers", startCmd.Flags().Lookup("known-providers")))
 }
 
 func startService(cmd *cobra.Command, args []string) error {
@@ -164,7 +172,7 @@ func startService(cmd *cobra.Command, args []string) error {
 
 	consumerCfg := cfg.AWSConfig.Copy()
 	consumerCfg.Region = cfg.ConsumerTableRegion
-	consumerTable := consumer.NewDynamoConsumerTable(dynamodb.NewFromConfig(consumerCfg), cfg.ConsumerTableName, cfg.ConsumerCustomerIndexName)
+	consumerTable := consumer.NewDynamoConsumerTable(dynamodb.NewFromConfig(consumerCfg), cfg.ConsumerTableName, cfg.ConsumerConsumerIndexName, cfg.ConsumerCustomerIndexName)
 
 	// Create service
 	svc, err := service.New(
@@ -190,7 +198,7 @@ func startService(cmd *cobra.Command, args []string) error {
 	interval := time.Duration(cfg.ConsolidationInterval) * time.Second
 	batchSize := cfg.ConsolidationBatchSize
 
-	cons, err := consolidator.New(id, egressTable, consolidatedTable, spaceStatsTable, interval, batchSize, presolver)
+	cons, err := consolidator.New(id, egressTable, consolidatedTable, spaceStatsTable, consumerTable, cfg.KnownProviders, interval, batchSize, presolver)
 	if err != nil {
 		return fmt.Errorf("creating consolidator: %w", err)
 	}

@@ -30,7 +30,9 @@ type Config struct {
 	CustomerTableRegion            string     `mapstructure:"customer_table_region" validate:"required"`
 	ConsumerTableName              string     `mapstructure:"consumer_table_name" validate:"required"`
 	ConsumerTableRegion            string     `mapstructure:"consumer_table_region" validate:"required"`
+	ConsumerConsumerIndexName      string     `mapstructure:"consumer_consumer_index_name" validate:"required"`
 	ConsumerCustomerIndexName      string     `mapstructure:"consumer_customer_index_name" validate:"required"`
+	KnownProviders                 []string   `mapstructure:"known_providers"`
 }
 
 func Load(ctx context.Context) (*Config, error) {

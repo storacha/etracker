@@ -6,6 +6,7 @@ import (
 	"iter"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -32,6 +33,7 @@ import (
 	"go.opentelemetry.io/otel/metric"
 
 	"github.com/storacha/etracker/internal/db/consolidated"
+	"github.com/storacha/etracker/internal/db/consumer"
 	"github.com/storacha/etracker/internal/db/egress"
 	"github.com/storacha/etracker/internal/db/spacestats"
 	"github.com/storacha/etracker/internal/metrics"
@@ -46,6 +48,8 @@ type Consolidator struct {
 	egressTable           egress.EgressTable
 	consolidatedTable     consolidated.ConsolidatedTable
 	spaceStatsTable       spacestats.SpaceStatsTable
+	consumerTable         consumer.ConsumerTable
+	knownProviders        []string
 	ucantoSrv             ucanto.ServerView[ucanto.Service]
 	retrieveValidationCtx validator.ValidationContext[content.RetrieveCaveats]
 	httpClient            *http.Client
@@ -59,6 +63,8 @@ func New(
 	egressTable egress.EgressTable,
 	consolidatedTable consolidated.ConsolidatedTable,
 	spaceStatsTable spacestats.SpaceStatsTable,
+	consumerTable consumer.ConsumerTable,
+	knownProviders []string,
 	interval time.Duration,
 	batchSize int,
 	presolver validator.PrincipalResolver,
@@ -84,6 +90,8 @@ func New(
 		egressTable:           egressTable,
 		consolidatedTable:     consolidatedTable,
 		spaceStatsTable:       spaceStatsTable,
+		consumerTable:         consumerTable,
+		knownProviders:        knownProviders,
 		retrieveValidationCtx: retrieveValidationCtx,
 		httpClient:            &http.Client{Timeout: 30 * time.Second},
 		interval:              interval,
@@ -318,7 +326,7 @@ func (c *Consolidator) ucanConsolidateHandler(
 			continue
 		}
 
-		cap, err := validateRetrievalReceipt(ctx, requesterNode, rcpt, c.retrieveValidationCtx)
+		cap, err := validateRetrievalReceipt(ctx, requesterNode, rcpt, c.retrieveValidationCtx, c.consumerTable, c.knownProviders)
 		if err != nil {
 			log.Warnf("Invalid receipt: %v", err)
 			continue
@@ -415,6 +423,8 @@ func validateRetrievalReceipt(
 	requesterNode did.DID,
 	rcpt receipt.AnyReceipt,
 	validationCtx validator.ValidationContext[content.RetrieveCaveats],
+	consumerTable consumer.ConsumerTable,
+	knownProviders []string,
 ) (ucan.Capability[content.RetrieveCaveats], error) {
 	// Confirm the receipt is not a failure receipt
 	_, x := result.Unwrap(rcpt.Out())
@@ -459,6 +469,16 @@ func validateRetrievalReceipt(
 	cap := inv.Capabilities()[0]
 	if cap.Can() != content.RetrieveAbility {
 		return nil, fmt.Errorf("original invocation is not a %s invocation, but a %s one", content.RetrieveAbility, cap.Can())
+	}
+
+	// Check the space has been provisioned by the upload service
+	space := cap.With()
+	consumer, err := consumerTable.Get(ctx, space)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get consumer: %w", err)
+	}
+	if !slices.Contains(knownProviders, consumer.Provider.String()) {
+		return nil, fmt.Errorf("unknown space provider %s", consumer.Provider)
 	}
 
 	// Verify the delegation chain
