@@ -54,7 +54,15 @@ type Consolidator struct {
 	stopCh                chan struct{}
 }
 
-func New(id principal.Signer, egressTable egress.EgressTable, consolidatedTable consolidated.ConsolidatedTable, spaceStatsTable spacestats.SpaceStatsTable, interval time.Duration, batchSize int) (*Consolidator, error) {
+func New(
+	id principal.Signer,
+	egressTable egress.EgressTable,
+	consolidatedTable consolidated.ConsolidatedTable,
+	spaceStatsTable spacestats.SpaceStatsTable,
+	interval time.Duration,
+	batchSize int,
+	presolver validator.PrincipalResolver,
+) (*Consolidator, error) {
 	retrieveValidationCtx := validator.NewValidationContext(
 		id.Verifier(),
 		content.Retrieve,
@@ -64,7 +72,7 @@ func New(id principal.Signer, egressTable egress.EgressTable, consolidatedTable 
 		},
 		validator.ProofUnavailable,
 		verifier.Parse,
-		validator.FailDIDKeyResolution,
+		presolver.ResolveDIDKey,
 		// ignore expiration and not valid before
 		func(dlg delegation.Delegation) validator.InvalidProof {
 			return nil
