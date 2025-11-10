@@ -9,7 +9,9 @@ import (
 )
 
 var principalMapping = map[string]string{
+	"did:web:registrar.forge.storacha.network":        "did:key:z6MkkfWep96Dphp35s9VqSCD7h7G4R9R1QCR3K9TxpbSRrKf",
 	"did:web:staging.registrar.warm.storacha.network": "did:key:z6MkuQ8PfSMrzXCwZkbQv662nZC4FGGm1aucbH256HXXZyxo",
+	"did:web:indexer.forge.storacha.network":          "did:key:z6Mkj8WmJQRy5jEnFN97uuc2qsjFdsYCuD5wE384Z1AMCFN7",
 	"did:web:staging.indexer.warm.storacha.network":   "did:key:z6Mkr4QkdinnXQmJ9JdnzwhcEjR8nMnuVPEwREyh9jp2Pb7k",
 }
 

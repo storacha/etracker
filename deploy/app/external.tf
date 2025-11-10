@@ -1,12 +1,12 @@
 locals {
-    storage_provider_table_name = "${terraform.workspace == "prod" ? "prod-upload-api-storage-provider" : "staging-warm-upload-api-storage-provider"}"
-    storage_provider_table_region = "${terraform.workspace == "prod" ? "us-west-2" : "us-east-2"}"
+    storage_provider_table_name = "${terraform.workspace == "forge-prod" ? "forge-prod-upload-api-storage-provider" : "staging-warm-upload-api-storage-provider"}"
+    storage_provider_table_region = "${terraform.workspace == "forge-prod" ? "us-west-2" : "us-east-2"}"
 
-    customer_table_name = "${terraform.workspace == "prod" ? "prod-upload-api-customer" : "staging-warm-upload-api-customer"}"
-    customer_table_region = "${terraform.workspace == "prod" ? "us-west-2" : "us-east-2"}"
+    customer_table_name = "${terraform.workspace == "forge-prod" ? "forge-prod-upload-api-customer" : "staging-warm-upload-api-customer"}"
+    customer_table_region = "${terraform.workspace == "forge-prod" ? "us-west-2" : "us-east-2"}"
 
-    consumer_table_name = "${terraform.workspace == "prod" ? "prod-upload-api-consumer" : "staging-warm-upload-api-consumer"}"
-    consumer_table_region = "${terraform.workspace == "prod" ? "us-west-2" : "us-east-2"}"
+    consumer_table_name = "${terraform.workspace == "forge-prod" ? "forge-prod-upload-api-consumer" : "staging-warm-upload-api-consumer"}"
+    consumer_table_region = "${terraform.workspace == "forge-prod" ? "us-west-2" : "us-east-2"}"
 }
 
 provider "aws" {

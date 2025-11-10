@@ -38,7 +38,7 @@ provider "aws" {
 }
 
 module "app" {
-  source = "github.com/storacha/storoku//app?ref=v0.4.5"
+  source = "github.com/storacha/storoku//app?ref=v0.5.1"
   private_key = var.private_key
   private_key_env_var = "ETRACKER_PRIVATE_KEY"
   httpport = 8080
