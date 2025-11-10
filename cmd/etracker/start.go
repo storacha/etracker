@@ -19,6 +19,7 @@ import (
 	"github.com/storacha/etracker/internal/consolidator"
 	"github.com/storacha/etracker/internal/db/consolidated"
 	"github.com/storacha/etracker/internal/db/egress"
+	"github.com/storacha/etracker/internal/db/storageproviders"
 	"github.com/storacha/etracker/internal/server"
 	"github.com/storacha/etracker/internal/service"
 )
@@ -53,6 +54,8 @@ func init() {
 	cobra.CheckErr(viper.BindPFlag("did", startCmd.Flags().Lookup("did")))
 
 	cobra.CheckErr(viper.BindEnv("metrics_auth_token"))
+	cobra.CheckErr(viper.BindEnv("admin_dashboard_user"))
+	cobra.CheckErr(viper.BindEnv("admin_dashboard_password"))
 
 	startCmd.Flags().String(
 		"egress-table-name",
@@ -79,6 +82,14 @@ func init() {
 	cobra.CheckErr(viper.BindPFlag("consolidated_table_name", startCmd.Flags().Lookup("consolidated-table-name")))
 	cobra.CheckErr(viper.BindEnv("consolidated_table_name", "CONSOLIDATED_RECORDS_TABLE_ID"))
 
+	startCmd.Flags().String(
+		"consolidated-node-stats-index-name",
+		"",
+		"Name of the DynamoDB index to use for querying consolidated stats by node and time",
+	)
+	cobra.CheckErr(viper.BindPFlag("consolidated_node_stats_index_name", startCmd.Flags().Lookup("consolidated-node-stats-index-name")))
+	cobra.CheckErr(viper.BindEnv("consolidated_node_stats_index_name", "CONSOLIDATED_RECORDS_NODE_STATS_INDEX_NAME"))
+
 	startCmd.Flags().Int(
 		"consolidation-interval",
 		12*60*60,
@@ -92,6 +103,9 @@ func init() {
 		"Number of records to process in each consolidation batch",
 	)
 	cobra.CheckErr(viper.BindPFlag("consolidation_batch_size", startCmd.Flags().Lookup("consolidation-batch-size")))
+
+	cobra.CheckErr(viper.BindEnv("external_storage_provider_table_name", "EXTERNAL_STORAGE_PROVIDER_TABLE_NAME"))
+	cobra.CheckErr(viper.BindEnv("external_storage_provider_table_region", "EXTERNAL_STORAGE_PROVIDER_TABLE_REGION"))
 }
 
 func startService(cmd *cobra.Command, args []string) error {
@@ -124,10 +138,14 @@ func startService(cmd *cobra.Command, args []string) error {
 
 	// Create database tables
 	egressTable := egress.NewDynamoEgressTable(dynamoClient, cfg.EgressTableName, cfg.EgressUnprocessedIndexName)
-	consolidatedTable := consolidated.NewDynamoConsolidatedTable(dynamoClient, cfg.ConsolidatedTableName)
+	consolidatedTable := consolidated.NewDynamoConsolidatedTable(dynamoClient, cfg.ConsolidatedTableName, cfg.ConsolidatedNodeStatsIndexName)
+
+	externalStorageProviderCfg := cfg.AWSConfig.Copy()
+	externalStorageProviderCfg.Region = cfg.ExternalStorageProviderTableRegion
+	externalStorageProviderTable := storageproviders.NewDynamoStorageProviderTable(dynamodb.NewFromConfig(externalStorageProviderCfg), cfg.ExternalStorageProviderTableName)
 
 	// Create service
-	svc, err := service.New(id, egressTable)
+	svc, err := service.New(id, egressTable, consolidatedTable, externalStorageProviderTable)
 	if err != nil {
 		return fmt.Errorf("creating service: %w", err)
 	}
@@ -145,7 +163,7 @@ func startService(cmd *cobra.Command, args []string) error {
 	go cons.Start(ctx)
 
 	// Create server
-	server, err := server.New(id, svc, cons, server.WithMetricsEndpoint(cfg.MetricsAuthToken))
+	server, err := server.New(id, svc, cons, server.WithMetricsEndpoint(cfg.MetricsAuthToken), server.WithAdminCreds(cfg.AdminDashboardUser, cfg.AdminDashboardPassword))
 	if err != nil {
 		return fmt.Errorf("creating server: %w", err)
 	}

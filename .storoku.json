@@ -15,6 +15,14 @@
     {
       "name": "ETRACKER_METRICS_AUTH_TOKEN",
       "variable": true
+    },
+    {
+      "name": "ETRACKER_ADMIN_DASHBOARD_USER",
+      "variable": true
+    },
+    {
+      "name": "ETRACKER_ADMIN_DASHBOARD_PASSWORD",
+      "variable": true
     }
   ],
   "tables": [
@@ -51,10 +59,29 @@
         {
           "name": "cause",
           "type": "S"
+        },
+        {
+          "name": "node",
+          "type": "S"
+        },
+        {
+          "name": "processedAt",
+          "type": "S"
         }
       ],
       "hashKey": "cause",
-      "rangeKey": ""
+      "rangeKey": "",
+      "globalSecondaryIndexes": {
+        "node-stats": {
+          "name": "node-stats",
+          "hashKey": "node",
+          "rangeKey": "processedAt",
+          "projectionType": "INCLUDE",
+          "nonKeyAttributes": [
+            "totalEgress"
+          ]
+        }
+      }
     }
   ],
   "networks": [

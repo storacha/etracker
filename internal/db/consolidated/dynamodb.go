@@ -22,12 +22,13 @@ import (
 var _ ConsolidatedTable = (*DynamoConsolidatedTable)(nil)
 
 type DynamoConsolidatedTable struct {
-	client    *dynamodb.Client
-	tableName string
+	client             *dynamodb.Client
+	tableName          string
+	nodeStatsIndexName string
 }
 
-func NewDynamoConsolidatedTable(client *dynamodb.Client, tableName string) *DynamoConsolidatedTable {
-	return &DynamoConsolidatedTable{client, tableName}
+func NewDynamoConsolidatedTable(client *dynamodb.Client, tableName string, nodeStatsIndexName string) *DynamoConsolidatedTable {
+	return &DynamoConsolidatedTable{client, tableName, nodeStatsIndexName}
 }
 
 func (d *DynamoConsolidatedTable) Add(ctx context.Context, cause ucan.Link, node did.DID, totalEgress uint64, rcpt capegress.ConsolidateReceipt) error {
@@ -71,6 +72,33 @@ func (d *DynamoConsolidatedTable) Get(ctx context.Context, cause ucan.Link) (*Co
 	return d.unmarshalRecord(result.Item)
 }
 
+func (d *DynamoConsolidatedTable) GetStatsByNode(ctx context.Context, node did.DID, since time.Time) ([]ConsolidatedRecord, error) {
+	// Query the index (partition key: node, range key: processedAt)
+	result, err := d.client.Query(ctx, &dynamodb.QueryInput{
+		TableName:              aws.String(d.tableName),
+		IndexName:              aws.String(d.nodeStatsIndexName),
+		KeyConditionExpression: aws.String("node = :node AND processedAt >= :since"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":node":  &types.AttributeValueMemberS{Value: node.String()},
+			":since": &types.AttributeValueMemberS{Value: since.UTC().Format(time.RFC3339)},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("querying consolidated records by node: %w", err)
+	}
+
+	records := make([]ConsolidatedRecord, 0, len(result.Items))
+	for _, item := range result.Items {
+		record, err := d.unmarshalRecord(item)
+		if err != nil {
+			return nil, err
+		}
+		records = append(records, *record)
+	}
+
+	return records, nil
+}
+
 type consolidatedRecord struct {
 	Cause       string    `dynamodbav:"cause"`
 	Node        string    `dynamodbav:"node"`
@@ -110,20 +138,28 @@ func (d *DynamoConsolidatedTable) unmarshalRecord(item map[string]types.Attribut
 		return nil, fmt.Errorf("parsing node DID: %w", err)
 	}
 
-	c, err := cid.Decode(record.Cause)
-	if err != nil {
-		return nil, fmt.Errorf("parsing cause CID: %w", err)
+	// Cause may not be present in index projections (e.g., node-stats)
+	c := cid.Undef
+	if record.Cause != "" {
+		c, err = cid.Decode(record.Cause)
+		if err != nil {
+			return nil, fmt.Errorf("parsing cause CID: %w", err)
+		}
 	}
 	cause := cidlink.Link{Cid: c}
 
-	archBytes := make([]byte, base64.StdEncoding.DecodedLen(len(record.Receipt)))
-	if _, err := base64.StdEncoding.Decode(archBytes, record.Receipt); err != nil {
-		return nil, fmt.Errorf("decoding receipt archive: %w", err)
-	}
+	// Receipt may not be present in index projections (e.g., node-stats)
+	var rcpt receipt.AnyReceipt
+	if record.Receipt != nil {
+		archBytes := make([]byte, base64.StdEncoding.DecodedLen(len(record.Receipt)))
+		if _, err := base64.StdEncoding.Decode(archBytes, record.Receipt); err != nil {
+			return nil, fmt.Errorf("decoding receipt archive: %w", err)
+		}
 
-	rcpt, err := receipt.Extract(archBytes)
-	if err != nil {
-		return nil, fmt.Errorf("extracting receipt: %w", err)
+		rcpt, err = receipt.Extract(archBytes)
+		if err != nil {
+			return nil, fmt.Errorf("extracting receipt: %w", err)
+		}
 	}
 
 	return &ConsolidatedRecord{

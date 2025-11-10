@@ -7,7 +7,7 @@ DATE=$(shell date -u -Iseconds)
 GOFLAGS=-ldflags="-X github.com/storacha/etracker/internal/build.version=$(VERSION) -X github.com/storacha/etracker/internal/build.Date=$(DATE) -X github.com/storacha/etracker/internal/build.BuiltBy=make"
 TAGS?=
 
-.PHONY: all build etracker test clean
+.PHONY: all build etracker test clean preview-admin
 
 all: build ## Make all targets
 
@@ -18,6 +18,10 @@ etracker: ## Build the service binary
 
 client: ## Build the client binary
 	go build $(GOFLAGS) $(TAGS) -o ./client github.com/storacha/etracker/cmd/client
+
+preview-admin: ## Launch admin dashboard preview server with mock data
+	@echo "Starting admin dashboard preview server..."
+	go run github.com/storacha/etracker/cmd/preview-admin
 
 test: ## Run tests
 	go test -v ./...

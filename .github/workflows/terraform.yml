@@ -30,6 +30,10 @@ on:
         required: true
       metrics-auth-token:
         required: true
+      admin-dashboard-user:
+        required: true
+      admin-dashboard-password:
+        required: true
       cloudflare-zone-id:
         required: true
       cloudflare-api-token:
@@ -52,6 +56,8 @@ env:
   TF_VAR_allowed_account_id: ${{ secrets.aws-account-id }}
   TF_VAR_region: ${{ secrets.region }}
   TF_VAR_metrics_auth_token: ${{ secrets.metrics-auth-token }}
+  TF_VAR_admin_dashboard_user: ${{ secrets.admin-dashboard-user }}
+  TF_VAR_admin_dashboard_password: ${{ secrets.admin-dashboard-password }}
   TF_VAR_cloudflare_zone_id: ${{ secrets.cloudflare-zone-id }}
   CLOUDFLARE_API_TOKEN: ${{ secrets.cloudflare-api-token }}
   DEPLOY_ENV: ci
