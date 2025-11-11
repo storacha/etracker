@@ -416,16 +416,15 @@ func validateRetrievalReceipt(
 	rcpt receipt.AnyReceipt,
 	validationCtx validator.ValidationContext[content.RetrieveCaveats],
 ) (ucan.Capability[content.RetrieveCaveats], error) {
+	// Confirm the receipt is not a failure receipt
+	_, x := result.Unwrap(rcpt.Out())
+	if x != nil {
+		return nil, fmt.Errorf("receipt is a failure receipt")
+	}
+
 	r, err := receipt.Rebind[content.RetrieveOk, fdm.FailureModel](rcpt, content.RetrieveOkType(), fdm.FailureType())
 	if err != nil {
 		return nil, fmt.Errorf("receipt is not a space/content/retrieve receipt: %w", err)
-	}
-
-	// Confirm the receipt is not a failure receipt
-	_, x := result.Unwrap(r.Out())
-	var emptyFailure fdm.FailureModel
-	if x != emptyFailure {
-		return nil, fmt.Errorf("receipt is a failure receipt")
 	}
 
 	// Confirm the receipt is issued by the node that submitted the batch for egress tracking
@@ -477,12 +476,7 @@ func extractProperties(cap ucan.Capability[content.RetrieveCaveats]) (did.DID, u
 		return did.Undef, 0, fmt.Errorf("parsing space from with %s: %w", cap.With(), err)
 	}
 
-	caveats, err := content.RetrieveCaveatsReader.Read(cap.Nb())
-	if err != nil {
-		return did.Undef, 0, fmt.Errorf("reading caveats from invocation: %w", err)
-	}
-
-	size := caveats.Range.End - caveats.Range.Start + 1
+	size := cap.Nb().Range.End - cap.Nb().Range.Start + 1
 
 	return space, size, nil
 }

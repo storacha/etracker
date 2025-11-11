@@ -250,7 +250,7 @@ func tamperReceiptResult(t *testing.T, rcpt receipt.AnyReceipt) {
 
 	require.NoError(t, bs.Put(rt))
 
-	// Supplant existing blocks
+	// Supplant existing blocks and data
 	rcptValue := reflect.ValueOf(rcpt).Elem()
 
 	rcptRt := rcptValue.FieldByName("rt")
@@ -260,4 +260,8 @@ func tamperReceiptResult(t *testing.T, rcpt receipt.AnyReceipt) {
 	rcptBlks := rcptValue.FieldByName("blks")
 	rcptBlksPtr := unsafe.Pointer(rcptBlks.UnsafeAddr())
 	*(*blockstore.BlockReader)(rcptBlksPtr) = bs
+
+	rcptData := rcptValue.FieldByName("data")
+	rcptData = reflect.NewAt(rcptData.Type(), unsafe.Pointer(rcptData.UnsafeAddr())).Elem()
+	rcptData.Set(reflect.ValueOf(&receiptModel))
 }
