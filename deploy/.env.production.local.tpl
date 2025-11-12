@@ -1,12 +1,12 @@
 <%
-if [ "$TF_WORKSPACE" == "prod" ]; then
-  STORAGE_PROVIDER_TABLE_NAME="prod-upload-api-storage-provider"
+if [ "$TF_WORKSPACE" == "forge-prod" ]; then
+  STORAGE_PROVIDER_TABLE_NAME="forge-prod-upload-api-storage-provider"
   STORAGE_PROVIDER_TABLE_REGION="us-west-2"
 
-  CUSTOMER_TABLE_NAME="prod-upload-api-customer"
+  CUSTOMER_TABLE_NAME="forge-prod-upload-api-customer"
   CUSTOMER_TABLE_REGION="us-west-2"
 
-  CONSUMER_TABLE_NAME="prod-upload-api-consumer"
+  CONSUMER_TABLE_NAME="forge-prod-upload-api-consumer"
   CONSUMER_TABLE_REGION="us-west-2"
   CONSUMER_CONSUMER_INDEX_NAME="consumer"
   CONSUMER_CUSTOMER_INDEX_NAME="customer"
