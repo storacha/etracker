@@ -7,10 +7,10 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/storacha/go-ucanto/principal"
 	ucanto "github.com/storacha/go-ucanto/server"
+	"github.com/storacha/go-ucanto/validator"
 
 	"github.com/storacha/etracker/internal/consolidator"
 	"github.com/storacha/etracker/internal/metrics"
-	"github.com/storacha/etracker/internal/presets"
 	"github.com/storacha/etracker/internal/service"
 	"github.com/storacha/etracker/web"
 )
@@ -21,6 +21,7 @@ type config struct {
 	metricsEndpointToken string
 	adminUser            string
 	adminPassword        string
+	principalResolver    validator.PrincipalResolver
 }
 
 type Option func(*config)
@@ -35,6 +36,12 @@ func WithAdminCreds(user, password string) Option {
 	return func(c *config) {
 		c.adminUser = user
 		c.adminPassword = password
+	}
+}
+
+func WithPrincipalResolver(resolver validator.PrincipalResolver) Option {
+	return func(c *config) {
+		c.principalResolver = resolver
 	}
 }
 
@@ -53,11 +60,9 @@ func New(id principal.Signer, svc *service.Service, cons *consolidator.Consolida
 
 	ucantoOpts := serviceMethods(svc)
 
-	presolver, err := presets.NewPresetResolver()
-	if err != nil {
-		return nil, err
+	if cfg.principalResolver != nil {
+		ucantoOpts = append(ucantoOpts, ucanto.WithPrincipalResolver(cfg.principalResolver.ResolveDIDKey))
 	}
-	ucantoOpts = append(ucantoOpts, ucanto.WithPrincipalResolver(presolver.ResolveDIDKey))
 
 	ucantoSrv, err := ucanto.NewServer(id, ucantoOpts...)
 	if err != nil {

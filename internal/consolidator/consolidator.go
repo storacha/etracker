@@ -24,8 +24,10 @@ import (
 	fdm "github.com/storacha/go-ucanto/core/result/failure/datamodel"
 	"github.com/storacha/go-ucanto/did"
 	"github.com/storacha/go-ucanto/principal"
+	"github.com/storacha/go-ucanto/principal/ed25519/verifier"
 	ucanto "github.com/storacha/go-ucanto/server"
 	"github.com/storacha/go-ucanto/ucan"
+	"github.com/storacha/go-ucanto/validator"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 
@@ -40,27 +42,53 @@ var log = logging.Logger("consolidator")
 var ErrNotFound = consolidated.ErrNotFound
 
 type Consolidator struct {
-	id                principal.Signer
-	egressTable       egress.EgressTable
-	consolidatedTable consolidated.ConsolidatedTable
-	spaceStatsTable   spacestats.SpaceStatsTable
-	ucantoSrv         ucanto.ServerView[ucanto.Service]
-	httpClient        *http.Client
-	interval          time.Duration
-	batchSize         int
-	stopCh            chan struct{}
+	id                    principal.Signer
+	egressTable           egress.EgressTable
+	consolidatedTable     consolidated.ConsolidatedTable
+	spaceStatsTable       spacestats.SpaceStatsTable
+	ucantoSrv             ucanto.ServerView[ucanto.Service]
+	retrieveValidationCtx validator.ValidationContext[content.RetrieveCaveats]
+	httpClient            *http.Client
+	interval              time.Duration
+	batchSize             int
+	stopCh                chan struct{}
 }
 
-func New(id principal.Signer, egressTable egress.EgressTable, consolidatedTable consolidated.ConsolidatedTable, spaceStatsTable spacestats.SpaceStatsTable, interval time.Duration, batchSize int) (*Consolidator, error) {
+func New(
+	id principal.Signer,
+	egressTable egress.EgressTable,
+	consolidatedTable consolidated.ConsolidatedTable,
+	spaceStatsTable spacestats.SpaceStatsTable,
+	interval time.Duration,
+	batchSize int,
+	presolver validator.PrincipalResolver,
+) (*Consolidator, error) {
+	retrieveValidationCtx := validator.NewValidationContext(
+		id.Verifier(),
+		content.Retrieve,
+		validator.IsSelfIssued,
+		func(context.Context, validator.Authorization[any]) validator.Revoked {
+			return nil
+		},
+		validator.ProofUnavailable,
+		verifier.Parse,
+		presolver.ResolveDIDKey,
+		// ignore expiration and not valid before
+		func(dlg delegation.Delegation) validator.InvalidProof {
+			return nil
+		},
+	)
+
 	c := &Consolidator{
-		id:                id,
-		egressTable:       egressTable,
-		consolidatedTable: consolidatedTable,
-		spaceStatsTable:   spaceStatsTable,
-		httpClient:        &http.Client{Timeout: 30 * time.Second},
-		interval:          interval,
-		batchSize:         batchSize,
-		stopCh:            make(chan struct{}),
+		id:                    id,
+		egressTable:           egressTable,
+		consolidatedTable:     consolidatedTable,
+		spaceStatsTable:       spaceStatsTable,
+		retrieveValidationCtx: retrieveValidationCtx,
+		httpClient:            &http.Client{Timeout: 30 * time.Second},
+		interval:              interval,
+		batchSize:             batchSize,
+		stopCh:                make(chan struct{}),
 	}
 
 	ucantoSrv, err := ucanto.NewServer(
@@ -267,6 +295,9 @@ func (c *Consolidator) ucanConsolidateHandler(
 		return nil, nil, fmt.Errorf("fetching attached track invocation: %w", err)
 	}
 
+	// requesterNode is the node that requested a receipt batch to be tracked for egress
+	requesterNode := trackInv.Issuer().DID()
+
 	trackCaveats, err := capegress.TrackCaveatsReader.Read(trackInv.Capabilities()[0].Nb())
 	if err != nil {
 		return nil, nil, fmt.Errorf("reading track caveats: %w", err)
@@ -287,18 +318,13 @@ func (c *Consolidator) ucanConsolidateHandler(
 			continue
 		}
 
-		retrievalRcpt, err := receipt.Rebind[content.RetrieveOk, fdm.FailureModel](rcpt, content.RetrieveOkType(), fdm.FailureType())
+		cap, err := validateRetrievalReceipt(ctx, requesterNode, rcpt, c.retrieveValidationCtx)
 		if err != nil {
-			log.Warnf("Receipt doesn't seem to be a retrieval receipt: %v", err)
-			continue
-		}
-
-		if err := c.validateReceipt(retrievalRcpt); err != nil {
 			log.Warnf("Invalid receipt: %v", err)
 			continue
 		}
 
-		space, size, err := c.extractProperties(retrievalRcpt)
+		space, size, err := extractProperties(cap)
 		if err != nil {
 			log.Warnf("Failed to extract size from receipt: %v", err)
 			continue
@@ -384,52 +410,73 @@ func (c *Consolidator) fetchReceipts(ctx context.Context, endpoint *url.URL, bat
 	}, nil
 }
 
-func (c *Consolidator) validateReceipt(retrievalRcpt receipt.Receipt[content.RetrieveOk, fdm.FailureModel]) error {
-	_, x := result.Unwrap(retrievalRcpt.Out())
-	var emptyFailure fdm.FailureModel
-	if x != emptyFailure {
-		return fmt.Errorf("receipt is a failure receipt")
+func validateRetrievalReceipt(
+	ctx context.Context,
+	requesterNode did.DID,
+	rcpt receipt.AnyReceipt,
+	validationCtx validator.ValidationContext[content.RetrieveCaveats],
+) (ucan.Capability[content.RetrieveCaveats], error) {
+	// Confirm the receipt is not a failure receipt
+	_, x := result.Unwrap(rcpt.Out())
+	if x != nil {
+		return nil, fmt.Errorf("receipt is a failure receipt")
 	}
 
-	// TODO: do more validation here.
-	// At the very least that the invocation is a retrieval invocation and the audience is the node
+	r, err := receipt.Rebind[content.RetrieveOk, fdm.FailureModel](rcpt, content.RetrieveOkType(), fdm.FailureType())
+	if err != nil {
+		return nil, fmt.Errorf("receipt is not a space/content/retrieve receipt: %w", err)
+	}
 
-	return nil
+	// Confirm the receipt is issued by the node that submitted the batch for egress tracking
+	if r.Issuer().DID() != requesterNode {
+		return nil, fmt.Errorf("receipt is not issued by the requester node")
+	}
+
+	// Verify receipt's signature
+	reqNodeVerifier, err := verifier.Parse(requesterNode.String())
+	if err != nil {
+		return nil, fmt.Errorf("parsing requester node key: %w", err)
+	}
+
+	verified, err := r.VerifySignature(reqNodeVerifier)
+	if err != nil {
+		return nil, fmt.Errorf("verifying receipt signature: %w", err)
+	}
+	if !verified {
+		return nil, fmt.Errorf("receipt signature is invalid")
+	}
+
+	// Confirm the receipt is for a `space/content/retrieve` invocation
+	inv, ok := r.Ran().Invocation()
+	if !ok {
+		return nil, fmt.Errorf("original retrieve invocation must be attached to the receipt")
+	}
+
+	if len(inv.Capabilities()) != 1 {
+		return nil, fmt.Errorf("expected exactly one capability in the invocation")
+	}
+
+	cap := inv.Capabilities()[0]
+	if cap.Can() != content.RetrieveAbility {
+		return nil, fmt.Errorf("original invocation is not a %s invocation, but a %s one", content.RetrieveAbility, cap.Can())
+	}
+
+	// Verify the delegation chain
+	auth, verr := validator.Access(ctx, inv, validationCtx)
+	if verr != nil {
+		return nil, fmt.Errorf("invalid delegation chain: %w", verr)
+	}
+
+	return auth.Capability(), nil
 }
 
-func (c *Consolidator) extractProperties(retrievalRcpt receipt.Receipt[content.RetrieveOk, fdm.FailureModel]) (did.DID, uint64, error) {
-	_, x := result.Unwrap(retrievalRcpt.Out())
-	var emptyFailure fdm.FailureModel
-	if x != emptyFailure {
-		return did.Undef, 0, fmt.Errorf("receipt is a failure receipt")
-	}
-
-	inv, ok := retrievalRcpt.Ran().Invocation()
-	if !ok {
-		return did.Undef, 0, fmt.Errorf("expected the ran invocation to be attached to the receipt")
-	}
-
-	caps := inv.Capabilities()
-	if len(caps) != 1 {
-		return did.Undef, 0, fmt.Errorf("expected exactly one capability in the invocation")
-	}
-
-	cap := caps[0]
-	if cap.Can() != content.RetrieveAbility {
-		return did.Undef, 0, fmt.Errorf("original invocation is not a retrieval invocation, but a %s one", cap.Can())
-	}
-
+func extractProperties(cap ucan.Capability[content.RetrieveCaveats]) (did.DID, uint64, error) {
 	space, err := did.Parse(string(cap.With()))
 	if err != nil {
 		return did.Undef, 0, fmt.Errorf("parsing space from with %s: %w", cap.With(), err)
 	}
 
-	caveats, err := content.RetrieveCaveatsReader.Read(cap.Nb())
-	if err != nil {
-		return did.Undef, 0, fmt.Errorf("reading caveats from invocation: %w", err)
-	}
-
-	size := caveats.Range.End - caveats.Range.Start + 1
+	size := cap.Nb().Range.End - cap.Nb().Range.Start + 1
 
 	return space, size, nil
 }

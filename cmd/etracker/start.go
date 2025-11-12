@@ -23,6 +23,7 @@ import (
 	"github.com/storacha/etracker/internal/db/egress"
 	"github.com/storacha/etracker/internal/db/spacestats"
 	"github.com/storacha/etracker/internal/db/storageproviders"
+	"github.com/storacha/etracker/internal/presets"
 	"github.com/storacha/etracker/internal/server"
 	"github.com/storacha/etracker/internal/service"
 )
@@ -179,11 +180,17 @@ func startService(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("creating service: %w", err)
 	}
 
+	// Presets-based principal resolution
+	presolver, err := presets.NewPresetResolver()
+	if err != nil {
+		return fmt.Errorf("creating principal resolver: %w", err)
+	}
+
 	// Create and start consolidator
 	interval := time.Duration(cfg.ConsolidationInterval) * time.Second
 	batchSize := cfg.ConsolidationBatchSize
 
-	cons, err := consolidator.New(id, egressTable, consolidatedTable, spaceStatsTable, interval, batchSize)
+	cons, err := consolidator.New(id, egressTable, consolidatedTable, spaceStatsTable, interval, batchSize, presolver)
 	if err != nil {
 		return fmt.Errorf("creating consolidator: %w", err)
 	}
@@ -192,7 +199,14 @@ func startService(cmd *cobra.Command, args []string) error {
 	go cons.Start(ctx)
 
 	// Create server
-	server, err := server.New(id, svc, cons, server.WithMetricsEndpoint(cfg.MetricsAuthToken), server.WithAdminCreds(cfg.AdminDashboardUser, cfg.AdminDashboardPassword))
+	server, err := server.New(
+		id,
+		svc,
+		cons,
+		server.WithMetricsEndpoint(cfg.MetricsAuthToken),
+		server.WithAdminCreds(cfg.AdminDashboardUser, cfg.AdminDashboardPassword),
+		server.WithPrincipalResolver(presolver),
+	)
 	if err != nil {
 		return fmt.Errorf("creating server: %w", err)
 	}

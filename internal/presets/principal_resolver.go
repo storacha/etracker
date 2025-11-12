@@ -9,8 +9,8 @@ import (
 )
 
 var principalMapping = map[string]string{
-	"did:web:staging.registrar.storacha.network":      "did:key:z6MkuQ8PfSMrzXCwZkbQv662nZC4FGGm1aucbH256HXXZyxo",
 	"did:web:staging.registrar.warm.storacha.network": "did:key:z6MkuQ8PfSMrzXCwZkbQv662nZC4FGGm1aucbH256HXXZyxo",
+	"did:web:staging.indexer.warm.storacha.network":   "did:key:z6Mkr4QkdinnXQmJ9JdnzwhcEjR8nMnuVPEwREyh9jp2Pb7k",
 }
 
 type resolver struct {
