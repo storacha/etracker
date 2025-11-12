@@ -49,6 +49,7 @@ data "aws_iam_policy_document" "task_external_dynamodb_scan_query_document" {
       data.aws_dynamodb_table.storage_provider_table.arn,
       data.aws_dynamodb_table.customer_table.arn,
       data.aws_dynamodb_table.consumer_table.arn,
+      "${data.aws_dynamodb_table.consumer_table.arn}/index/consumer",
       "${data.aws_dynamodb_table.consumer_table.arn}/index/customer",
     ]
   }

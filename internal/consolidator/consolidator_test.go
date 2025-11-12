@@ -8,6 +8,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime"
+	"github.com/storacha/etracker/internal/db/consumer"
 	"github.com/storacha/go-libstoracha/capabilities/space/content"
 	"github.com/storacha/go-libstoracha/testutil"
 	"github.com/storacha/go-ucanto/core/dag/blockstore"
@@ -21,12 +22,37 @@ import (
 	"github.com/storacha/go-ucanto/core/receipt/ran"
 	"github.com/storacha/go-ucanto/core/result"
 	"github.com/storacha/go-ucanto/core/result/failure"
+	"github.com/storacha/go-ucanto/did"
 	"github.com/storacha/go-ucanto/principal/ed25519/verifier"
 	"github.com/storacha/go-ucanto/ucan"
 	"github.com/storacha/go-ucanto/validator"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var _ consumer.ConsumerTable = (*mockConsumerTable)(nil)
+
+type mockConsumerTable struct {
+	t        *testing.T
+	provider did.DID
+}
+
+func (m *mockConsumerTable) Get(ctx context.Context, space string) (consumer.Consumer, error) {
+	s, err := did.Parse(space)
+	if err != nil {
+		return consumer.Consumer{}, err
+	}
+
+	return consumer.Consumer{
+		ID:           s,
+		Provider:     m.provider,
+		Subscription: testutil.RandomCID(m.t).String(),
+	}, nil
+}
+
+func (m *mockConsumerTable) ListByCustomer(ctx context.Context, customer did.DID) ([]did.DID, error) {
+	return []did.DID{}, nil
+}
 
 func TestValidateRetrievalReceipt(t *testing.T) {
 	vCtx := validator.NewValidationContext(
@@ -44,6 +70,11 @@ func TestValidateRetrievalReceipt(t *testing.T) {
 			return nil
 		},
 	)
+
+	knownProvider, err := did.Parse("did:web:up.test.storacha.network")
+	require.NoError(t, err)
+
+	consumerTable := &mockConsumerTable{t: t, provider: knownProvider}
 
 	space := testutil.RandomSigner(t)
 	randBytes := testutil.RandomBytes(t, 256)
@@ -95,7 +126,7 @@ func TestValidateRetrievalReceipt(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		cap, err := validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, vCtx)
+		cap, err := validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, vCtx, consumerTable, []string{knownProvider.String()})
 		require.NoError(t, err)
 		assert.Equal(t, content.RetrieveAbility, cap.Can())
 	})
@@ -108,7 +139,7 @@ func TestValidateRetrievalReceipt(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		_, err = validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, vCtx)
+		_, err = validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, vCtx, consumerTable, []string{knownProvider.String()})
 		assert.ErrorContains(t, err, "receipt is a failure receipt")
 	})
 
@@ -121,7 +152,7 @@ func TestValidateRetrievalReceipt(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		_, err = validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, vCtx)
+		_, err = validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, vCtx, consumerTable, []string{knownProvider.String()})
 		assert.ErrorContains(t, err, "receipt is not issued by the requester node")
 	})
 
@@ -137,7 +168,7 @@ func TestValidateRetrievalReceipt(t *testing.T) {
 		// Tamper with the receipt to change its result
 		tamperReceiptResult(t, rcpt)
 
-		_, err = validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, vCtx)
+		_, err = validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, vCtx, consumerTable, []string{knownProvider.String()})
 		assert.ErrorContains(t, err, "receipt signature is invalid")
 	})
 
@@ -149,7 +180,7 @@ func TestValidateRetrievalReceipt(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		_, err = validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, vCtx)
+		_, err = validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, vCtx, consumerTable, []string{knownProvider.String()})
 		assert.ErrorContains(t, err, "original retrieve invocation must be attached to the receipt")
 	})
 
@@ -173,9 +204,26 @@ func TestValidateRetrievalReceipt(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		_, err = validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, vCtx)
+		_, err = validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, vCtx, consumerTable, []string{knownProvider.String()})
 		expectedErr := "original invocation is not a " + content.RetrieveAbility + " invocation, but a other/ability one"
 		assert.ErrorContains(t, err, expectedErr)
+	})
+
+	t.Run("wrong space provider", func(t *testing.T) {
+		rcpt, err := receipt.Issue(
+			storageNode,
+			result.Ok[content.RetrieveOk, failure.IPLDBuilderFailure](content.RetrieveOk{}),
+			ran.FromInvocation(inv),
+		)
+		require.NoError(t, err)
+
+		otherProvider, err := did.Parse("did:web:up.other.net")
+		require.NoError(t, err)
+
+		consumerTable := &mockConsumerTable{t: t, provider: otherProvider}
+
+		_, err = validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, vCtx, consumerTable, []string{knownProvider.String()})
+		assert.ErrorContains(t, err, "unknown space provider")
 	})
 
 	t.Run("invalid delegation chain", func(t *testing.T) {
@@ -201,7 +249,7 @@ func TestValidateRetrievalReceipt(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		_, err = validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, vCtx)
+		_, err = validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, vCtx, consumerTable, []string{knownProvider.String()})
 		assert.ErrorContains(t, err, "invalid delegation chain")
 	})
 }
