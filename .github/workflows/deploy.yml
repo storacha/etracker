@@ -52,6 +52,7 @@ jobs:
     with:
       env: forge-production
       workspace: forge-prod
+      network: forge
       did: did:web:etracker.forge.storacha.network
       apply: ${{ (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'forge-production') }}
     secrets:
