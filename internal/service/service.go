@@ -26,6 +26,7 @@ var log = logging.Logger("service")
 
 type Service struct {
 	id                   principal.Signer
+	environment          string
 	egressTable          egress.EgressTable
 	consolidatedTable    consolidated.ConsolidatedTable
 	storageProviderTable storageproviders.StorageProviderTable
@@ -36,6 +37,7 @@ type Service struct {
 
 func New(
 	id principal.Signer,
+	environment string,
 	egressTable egress.EgressTable,
 	consolidatedTable consolidated.ConsolidatedTable,
 	storageProviderTable storageproviders.StorageProviderTable,
@@ -45,6 +47,7 @@ func New(
 ) (*Service, error) {
 	return &Service{
 		id:                   id,
+		environment:          environment,
 		egressTable:          egressTable,
 		consolidatedTable:    consolidatedTable,
 		storageProviderTable: storageProviderTable,
@@ -59,7 +62,7 @@ func (s *Service) Record(ctx context.Context, node did.DID, receipts ucan.Link, 
 		return err
 	}
 
-	attributes := attribute.NewSet(attribute.String("node", node.String()))
+	attributes := attribute.NewSet(attribute.String("node", node.String()), attribute.String("env", s.environment))
 	metrics.TrackedBatchesPerNode.Add(ctx, 1, metric.WithAttributeSet(attributes))
 
 	return nil

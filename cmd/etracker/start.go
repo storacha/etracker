@@ -57,6 +57,13 @@ func init() {
 	)
 	cobra.CheckErr(viper.BindPFlag("did", startCmd.Flags().Lookup("did")))
 
+	startCmd.Flags().String(
+		"metrics-environment",
+		"",
+		"Environment label for metrics",
+	)
+	cobra.CheckErr(viper.BindPFlag("metrics_environment", startCmd.Flags().Lookup("metrics-environment")))
+
 	cobra.CheckErr(viper.BindEnv("metrics_auth_token"))
 	cobra.CheckErr(viper.BindEnv("admin_dashboard_user"))
 	cobra.CheckErr(viper.BindEnv("admin_dashboard_password"))
@@ -154,6 +161,8 @@ func startService(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	env := cfg.MetricsEnvironment
+
 	// Create DynamoDB client
 	dynamoClient := dynamodb.NewFromConfig(cfg.AWSConfig)
 
@@ -177,6 +186,7 @@ func startService(cmd *cobra.Command, args []string) error {
 	// Create service
 	svc, err := service.New(
 		id,
+		env,
 		egressTable,
 		consolidatedTable,
 		storageProviderTable,
@@ -198,7 +208,18 @@ func startService(cmd *cobra.Command, args []string) error {
 	interval := time.Duration(cfg.ConsolidationInterval) * time.Second
 	batchSize := cfg.ConsolidationBatchSize
 
-	cons, err := consolidator.New(id, egressTable, consolidatedTable, spaceStatsTable, consumerTable, cfg.KnownProviders, interval, batchSize, presolver)
+	cons, err := consolidator.New(
+		id,
+		env,
+		egressTable,
+		consolidatedTable,
+		spaceStatsTable,
+		consumerTable,
+		cfg.KnownProviders,
+		interval,
+		batchSize,
+		presolver,
+	)
 	if err != nil {
 		return fmt.Errorf("creating consolidator: %w", err)
 	}
