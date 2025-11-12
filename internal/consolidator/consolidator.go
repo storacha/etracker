@@ -45,6 +45,7 @@ var ErrNotFound = consolidated.ErrNotFound
 
 type Consolidator struct {
 	id                    principal.Signer
+	environment           string
 	egressTable           egress.EgressTable
 	consolidatedTable     consolidated.ConsolidatedTable
 	spaceStatsTable       spacestats.SpaceStatsTable
@@ -60,6 +61,7 @@ type Consolidator struct {
 
 func New(
 	id principal.Signer,
+	environment string,
 	egressTable egress.EgressTable,
 	consolidatedTable consolidated.ConsolidatedTable,
 	spaceStatsTable spacestats.SpaceStatsTable,
@@ -87,6 +89,7 @@ func New(
 
 	c := &Consolidator{
 		id:                    id,
+		environment:           environment,
 		egressTable:           egressTable,
 		consolidatedTable:     consolidatedTable,
 		spaceStatsTable:       spaceStatsTable,
@@ -217,7 +220,7 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 		}
 
 		// Increment consolidated bytes counter for this node
-		attributes := attribute.NewSet(attribute.String("node", record.Node.String()))
+		attributes := attribute.NewSet(attribute.String("node", record.Node.String()), attribute.String("env", c.environment))
 		metrics.ConsolidatedBytesPerNode.Add(ctx, int64(totalEgress), metric.WithAttributeSet(attributes))
 
 		bLog.Infof("Consolidated %d bytes", totalEgress)

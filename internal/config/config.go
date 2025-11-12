@@ -13,6 +13,7 @@ type Config struct {
 	Port                           int        `mapstructure:"port" validate:"required,min=1,max=65535"`
 	PrivateKey                     string     `mapstructure:"private_key" validate:"required"`
 	DID                            string     `mapstructure:"did" validate:"startswith=did:web:"`
+	MetricsEnvironment             string     `mapstructure:"metrics_environment"`
 	MetricsAuthToken               string     `mapstructure:"metrics_auth_token"`
 	AdminDashboardUser             string     `mapstructure:"admin_dashboard_user"`
 	AdminDashboardPassword         string     `mapstructure:"admin_dashboard_password"`
