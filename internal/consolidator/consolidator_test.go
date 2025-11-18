@@ -26,7 +26,6 @@ import (
 	"github.com/storacha/go-ucanto/core/result/failure"
 	"github.com/storacha/go-ucanto/did"
 	"github.com/storacha/go-ucanto/principal/absentee"
-	"github.com/storacha/go-ucanto/principal/ed25519/verifier"
 	"github.com/storacha/go-ucanto/ucan"
 	"github.com/storacha/go-ucanto/validator"
 	"github.com/stretchr/testify/assert"
@@ -63,29 +62,22 @@ func TestValidateRetrievalReceipt(t *testing.T) {
 	// trust attestations from the upload service
 	uploadServiceID := testutil.WebService
 
-	attestDlg, err := delegation.Delegate(
-		consolidatorID,
-		uploadServiceID,
-		[]ucan.Capability[ucan.NoCaveats]{
-			ucan.NewCapability(
-				ucancap.AttestAbility,
-				consolidatorID.DID().String(),
-				ucan.NoCaveats{},
-			),
-		},
-		delegation.WithNoExpiration(),
-	)
+	knownProvider, err := did.Parse("did:web:up.test.storacha.network")
 	require.NoError(t, err)
 
-	vCtx := validator.NewValidationContext(
-		consolidatorID.Verifier(),
-		content.Retrieve,
-		validator.IsSelfIssued,
-		func(context.Context, validator.Authorization[any]) validator.Revoked {
-			return nil
-		},
-		validator.ProofUnavailable,
-		verifier.Parse,
+	consumerTable := &mockConsumerTable{t: t, provider: knownProvider}
+
+	// Create a consolidator instance to test the validation context it creates works as expected
+	c, err := New(
+		consolidatorID,
+		"test",
+		nil,
+		nil,
+		nil,
+		consumerTable,
+		[]string{knownProvider.String()},
+		0,
+		1,
 		func(ctx context.Context, input did.DID) (did.DID, validator.UnresolvedDID) {
 			if input.String() == uploadServiceID.DID().String() {
 				return uploadServiceID.Unwrap().DID(), nil
@@ -93,17 +85,9 @@ func TestValidateRetrievalReceipt(t *testing.T) {
 
 			return did.Undef, validator.NewDIDKeyResolutionError(input, fmt.Errorf("%s not found in mapping", input.String()))
 		},
-		// ignore expiration and not valid before
-		func(dlg delegation.Delegation) validator.InvalidProof {
-			return nil
-		},
-		attestDlg,
+		[]string{uploadServiceID.DID().String()},
 	)
-
-	knownProvider, err := did.Parse("did:web:up.test.storacha.network")
 	require.NoError(t, err)
-
-	consumerTable := &mockConsumerTable{t: t, provider: knownProvider}
 
 	space := testutil.RandomSigner(t)
 	randBytes := testutil.RandomBytes(t, 256)
@@ -155,7 +139,7 @@ func TestValidateRetrievalReceipt(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		cap, err := validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, vCtx, consumerTable, []string{knownProvider.String()})
+		cap, err := validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, c.retrieveValidationCtx, c.consumerTable, c.knownProviders)
 		require.NoError(t, err)
 		assert.Equal(t, content.RetrieveAbility, cap.Can())
 	})
@@ -168,7 +152,7 @@ func TestValidateRetrievalReceipt(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		_, err = validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, vCtx, consumerTable, []string{knownProvider.String()})
+		_, err = validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, c.retrieveValidationCtx, c.consumerTable, c.knownProviders)
 		assert.ErrorContains(t, err, "receipt is a failure receipt")
 	})
 
@@ -181,7 +165,7 @@ func TestValidateRetrievalReceipt(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		_, err = validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, vCtx, consumerTable, []string{knownProvider.String()})
+		_, err = validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, c.retrieveValidationCtx, c.consumerTable, c.knownProviders)
 		assert.ErrorContains(t, err, "receipt is not issued by the requester node")
 	})
 
@@ -197,7 +181,7 @@ func TestValidateRetrievalReceipt(t *testing.T) {
 		// Tamper with the receipt to change its result
 		tamperReceiptResult(t, rcpt)
 
-		_, err = validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, vCtx, consumerTable, []string{knownProvider.String()})
+		_, err = validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, c.retrieveValidationCtx, c.consumerTable, c.knownProviders)
 		assert.ErrorContains(t, err, "receipt signature is invalid")
 	})
 
@@ -209,7 +193,7 @@ func TestValidateRetrievalReceipt(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		_, err = validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, vCtx, consumerTable, []string{knownProvider.String()})
+		_, err = validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, c.retrieveValidationCtx, c.consumerTable, c.knownProviders)
 		assert.ErrorContains(t, err, "original retrieve invocation must be attached to the receipt")
 	})
 
@@ -233,7 +217,7 @@ func TestValidateRetrievalReceipt(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		_, err = validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, vCtx, consumerTable, []string{knownProvider.String()})
+		_, err = validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, c.retrieveValidationCtx, c.consumerTable, c.knownProviders)
 		expectedErr := "original invocation is not a " + content.RetrieveAbility + " invocation, but a other/ability one"
 		assert.ErrorContains(t, err, expectedErr)
 	})
@@ -251,7 +235,7 @@ func TestValidateRetrievalReceipt(t *testing.T) {
 
 		consumerTable := &mockConsumerTable{t: t, provider: otherProvider}
 
-		_, err = validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, vCtx, consumerTable, []string{knownProvider.String()})
+		_, err = validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, c.retrieveValidationCtx, consumerTable, c.knownProviders)
 		assert.ErrorContains(t, err, "unknown space provider")
 	})
 
@@ -278,7 +262,7 @@ func TestValidateRetrievalReceipt(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		_, err = validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, vCtx, consumerTable, []string{knownProvider.String()})
+		_, err = validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, c.retrieveValidationCtx, c.consumerTable, c.knownProviders)
 		assert.ErrorContains(t, err, "invalid delegation chain")
 	})
 
@@ -357,7 +341,7 @@ func TestValidateRetrievalReceipt(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		cap, err := validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, vCtx, consumerTable, []string{knownProvider.String()})
+		cap, err := validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, c.retrieveValidationCtx, c.consumerTable, c.knownProviders)
 		require.NoError(t, err)
 		assert.Equal(t, content.RetrieveAbility, cap.Can())
 	})

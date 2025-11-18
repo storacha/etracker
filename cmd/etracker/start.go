@@ -225,7 +225,7 @@ func startService(cmd *cobra.Command, args []string) error {
 		cfg.KnownProviders,
 		interval,
 		batchSize,
-		presolver,
+		presolver.ResolveDIDKey,
 		cfg.TrustedAuthorities,
 	)
 	if err != nil {

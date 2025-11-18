@@ -70,7 +70,7 @@ func New(
 	knownProviders []string,
 	interval time.Duration,
 	batchSize int,
-	presolver validator.PrincipalResolver,
+	presolver validator.PrincipalResolverFunc,
 	trustedAuthorities []string,
 ) (*Consolidator, error) {
 	// trust attestations from trusted authorities
@@ -109,7 +109,7 @@ func New(
 		},
 		validator.ProofUnavailable,
 		verifier.Parse,
-		presolver.ResolveDIDKey,
+		presolver,
 		// ignore expiration and not valid before
 		func(dlg delegation.Delegation) validator.InvalidProof {
 			return nil
