@@ -134,6 +134,13 @@ func init() {
 		"List of known provider DIDs (defaults to presets if not specified)",
 	)
 	cobra.CheckErr(viper.BindPFlag("known_providers", startCmd.Flags().Lookup("known-providers")))
+
+	startCmd.Flags().StringSlice(
+		"trusted-authorities",
+		[]string{},
+		"List of trusted authorities, identified by their DIDs (comma-separated)",
+	)
+	cobra.CheckErr(viper.BindPFlag("trusted_authorities", startCmd.Flags().Lookup("trusted-authorities")))
 }
 
 func startService(cmd *cobra.Command, args []string) error {
@@ -219,6 +226,7 @@ func startService(cmd *cobra.Command, args []string) error {
 		interval,
 		batchSize,
 		presolver,
+		cfg.TrustedAuthorities,
 	)
 	if err != nil {
 		return fmt.Errorf("creating consolidator: %w", err)

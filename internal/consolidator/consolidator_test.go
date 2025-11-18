@@ -2,6 +2,7 @@ package consolidator
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"testing"
 	"unsafe"
@@ -10,6 +11,7 @@ import (
 	"github.com/ipld/go-ipld-prime"
 	"github.com/storacha/etracker/internal/db/consumer"
 	"github.com/storacha/go-libstoracha/capabilities/space/content"
+	ucancap "github.com/storacha/go-libstoracha/capabilities/ucan"
 	"github.com/storacha/go-libstoracha/testutil"
 	"github.com/storacha/go-ucanto/core/dag/blockstore"
 	"github.com/storacha/go-ucanto/core/delegation"
@@ -23,6 +25,7 @@ import (
 	"github.com/storacha/go-ucanto/core/result"
 	"github.com/storacha/go-ucanto/core/result/failure"
 	"github.com/storacha/go-ucanto/did"
+	"github.com/storacha/go-ucanto/principal/absentee"
 	"github.com/storacha/go-ucanto/principal/ed25519/verifier"
 	"github.com/storacha/go-ucanto/ucan"
 	"github.com/storacha/go-ucanto/validator"
@@ -55,8 +58,27 @@ func (m *mockConsumerTable) ListByCustomer(ctx context.Context, customer did.DID
 }
 
 func TestValidateRetrievalReceipt(t *testing.T) {
+	consolidatorID := testutil.RandomSigner(t)
+
+	// trust attestations from the upload service
+	uploadServiceID := testutil.WebService
+
+	attestDlg, err := delegation.Delegate(
+		consolidatorID,
+		uploadServiceID,
+		[]ucan.Capability[ucan.NoCaveats]{
+			ucan.NewCapability(
+				ucancap.AttestAbility,
+				consolidatorID.DID().String(),
+				ucan.NoCaveats{},
+			),
+		},
+		delegation.WithNoExpiration(),
+	)
+	require.NoError(t, err)
+
 	vCtx := validator.NewValidationContext(
-		testutil.Service.Verifier(),
+		consolidatorID.Verifier(),
 		content.Retrieve,
 		validator.IsSelfIssued,
 		func(context.Context, validator.Authorization[any]) validator.Revoked {
@@ -64,11 +86,18 @@ func TestValidateRetrievalReceipt(t *testing.T) {
 		},
 		validator.ProofUnavailable,
 		verifier.Parse,
-		validator.FailDIDKeyResolution,
+		func(ctx context.Context, input did.DID) (did.DID, validator.UnresolvedDID) {
+			if input.String() == uploadServiceID.DID().String() {
+				return uploadServiceID.Unwrap().DID(), nil
+			}
+
+			return did.Undef, validator.NewDIDKeyResolutionError(input, fmt.Errorf("%s not found in mapping", input.String()))
+		},
 		// ignore expiration and not valid before
 		func(dlg delegation.Delegation) validator.InvalidProof {
 			return nil
 		},
+		attestDlg,
 	)
 
 	knownProvider, err := did.Parse("did:web:up.test.storacha.network")
@@ -251,6 +280,86 @@ func TestValidateRetrievalReceipt(t *testing.T) {
 
 		_, err = validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, vCtx, consumerTable, []string{knownProvider.String()})
 		assert.ErrorContains(t, err, "invalid delegation chain")
+	})
+
+	t.Run("ucan/attest delegation from trusted authority works", func(t *testing.T) {
+		// Bob invokes on the space, but the proof is from the space to Alice
+		// Alice delegates access to Bob's account
+		bobAcc := absentee.From(testutil.Must(did.Parse("did:mailto:web.mail.bob"))(t))
+		aliceToBobAcc, err := delegation.Delegate(
+			testutil.Alice,
+			bobAcc,
+			[]ucan.Capability[content.RetrieveCaveats]{
+				ucan.NewCapability(
+					content.RetrieveAbility,
+					space.DID().String(),
+					content.RetrieveCaveats{
+						Blob:  content.BlobDigest{Digest: blob.cid.Hash()},
+						Range: content.Range{Start: 0, End: uint64(len(blob.bytes) - 1)},
+					},
+				),
+			},
+			delegation.WithProof(prf),
+		)
+		require.NoError(t, err)
+
+		// Bob's account delegates to Bob's key
+		bobAccToKey, err := delegation.Delegate(
+			bobAcc,
+			testutil.Bob,
+			[]ucan.Capability[content.RetrieveCaveats]{
+				ucan.NewCapability(
+					content.RetrieveAbility,
+					space.DID().String(),
+					content.RetrieveCaveats{
+						Blob:  content.BlobDigest{Digest: blob.cid.Hash()},
+						Range: content.Range{Start: 0, End: uint64(len(blob.bytes) - 1)},
+					},
+				),
+			},
+			delegation.WithProof(delegation.FromDelegation(aliceToBobAcc)),
+		)
+		require.NoError(t, err)
+
+		// The upload service is trusted to attest bob's delegation
+		attestDlg, err := ucancap.Attest.Delegate(
+			uploadServiceID,
+			testutil.Bob,
+			uploadServiceID.DID().String(),
+			ucancap.AttestCaveats{
+				Proof: bobAccToKey.Link(),
+			},
+		)
+		require.NoError(t, err)
+
+		// Bob's agent invokes space/content/retrieve on the space
+		bobInvokes, err := invocation.Invoke(
+			testutil.Bob,
+			storageNode,
+			content.Retrieve.New(
+				space.DID().String(),
+				content.RetrieveCaveats{
+					Blob:  content.BlobDigest{Digest: blob.cid.Hash()},
+					Range: content.Range{Start: 0, End: 1},
+				},
+			),
+			delegation.WithProof(
+				delegation.FromDelegation(bobAccToKey),
+				delegation.FromDelegation(attestDlg),
+			),
+		)
+		require.NoError(t, err)
+
+		rcpt, err := receipt.Issue(
+			storageNode,
+			result.Ok[content.RetrieveOk, failure.IPLDBuilderFailure](content.RetrieveOk{}),
+			ran.FromInvocation(bobInvokes),
+		)
+		require.NoError(t, err)
+
+		cap, err := validateRetrievalReceipt(context.Background(), storageNode.DID(), rcpt, vCtx, consumerTable, []string{knownProvider.String()})
+		require.NoError(t, err)
+		assert.Equal(t, content.RetrieveAbility, cap.Can())
 	})
 }
 
