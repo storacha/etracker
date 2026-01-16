@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"net/url"
 	"time"
 
@@ -23,6 +24,26 @@ import (
 )
 
 var log = logging.Logger("service")
+
+var ErrAccountNotFound = errors.New("customer account not found")
+
+// SpaceEgress holds egress data for a single space
+type SpaceEgress struct {
+	Total      uint64
+	DailyStats []DailyStat
+}
+
+// DailyStat represents egress for a single day
+type DailyStat struct {
+	Date   time.Time
+	Egress uint64
+}
+
+// AccountEgress holds complete egress data for an account
+type AccountEgress struct {
+	Total  uint64
+	Spaces map[did.DID]SpaceEgress
+}
 
 type Service struct {
 	id                   principal.Signer
@@ -171,8 +192,8 @@ func (s *Service) getAccountStats(
 
 	// Aggregate stats across all spaces
 	for _, space := range spaces {
-		// Fetch daily stats for this space from the beginning of previous month
-		dailyStats, err := s.spaceStatsTable.GetDailyStats(ctx, space, stats.Earliest())
+		// Fetch daily stats for this space from the beginning of previous month to now
+		dailyStats, err := s.spaceStatsTable.GetDailyStats(ctx, space, stats.Earliest(), time.Now().UTC())
 		if err != nil {
 			log.Error("failed to get daily stats for space", "space", space, "error", err)
 			continue
@@ -184,4 +205,97 @@ func (s *Service) getAccountStats(
 	}
 
 	return stats, err
+}
+
+// defaultPeriod returns a period from the first day of the last complete month to today
+func defaultPeriod() Period {
+	now := time.Now().UTC()
+
+	// Calculate first day of last complete month
+	firstOfThisMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+	firstOfLastMonth := firstOfThisMonth.AddDate(0, -1, 0)
+
+	return Period{
+		From: firstOfLastMonth,
+		To:   now,
+	}
+}
+
+// GetAccountEgress fetches egress data for an account with optional filters
+func (s *Service) GetAccountEgress(
+	ctx context.Context,
+	accountDID did.DID,
+	spacesFilter []did.DID,
+	periodFilter *Period,
+) (*AccountEgress, error) {
+	// 1. Validate account exists
+	exists, err := s.customerTable.Has(ctx, accountDID)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, ErrAccountNotFound
+	}
+
+	// 2. Determine which spaces to query
+	spacesToQuery := spacesFilter
+	if len(spacesFilter) == 0 {
+		allSpaces, err := s.consumerTable.ListByCustomer(ctx, accountDID)
+		if err != nil {
+			return nil, err
+		}
+		spacesToQuery = allSpaces
+	}
+
+	// 3. If no spaces, return success with zeros (as per requirement)
+	if len(spacesToQuery) == 0 {
+		return &AccountEgress{
+			Total:  0,
+			Spaces: make(map[did.DID]SpaceEgress),
+		}, nil
+	}
+
+	// 4. Determine query time range
+	// Default: first day of last complete month to today
+	period := periodFilter
+	if period == nil {
+		defaultPeriod := defaultPeriod()
+		period = &defaultPeriod
+	}
+
+	// 5. Fetch and aggregate stats for each space
+	var totalEgress uint64
+	spacesData := make(map[did.DID]SpaceEgress, len(spacesToQuery))
+
+	for _, spaceDID := range spacesToQuery {
+		dailyStatsDB, err := s.spaceStatsTable.GetDailyStats(ctx, spaceDID, period.From, period.To)
+		if err != nil {
+			log.Errorf("failed to get daily stats for space %s: %v", spaceDID, err)
+			continue // Skip space but continue with others
+		}
+
+		// No need to filter - DB query already filtered by BETWEEN
+		var spaceTotal uint64
+		dailyStats := make([]DailyStat, 0, len(dailyStatsDB))
+
+		for _, dbStat := range dailyStatsDB {
+			spaceTotal += dbStat.Egress
+			dailyStats = append(dailyStats, DailyStat{
+				Date:   dbStat.Date,
+				Egress: dbStat.Egress,
+			})
+		}
+
+		// Include space even if it has no data - shows space exists but has zero egress
+		spacesData[spaceDID] = SpaceEgress{
+			Total:      spaceTotal,
+			DailyStats: dailyStats,
+		}
+		totalEgress += spaceTotal
+	}
+
+	return &AccountEgress{
+		Total:  totalEgress,
+		Spaces: spacesData,
+	}, nil
 }

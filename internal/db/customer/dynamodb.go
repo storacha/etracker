@@ -121,3 +121,20 @@ func decodeToken(token string) (map[string]types.AttributeValue, error) {
 
 	return key, nil
 }
+
+func (d *DynamoCustomerTable) Has(ctx context.Context, customerDID did.DID) (bool, error) {
+	input := &dynamodb.GetItemInput{
+		TableName: aws.String(d.tableName),
+		Key: map[string]types.AttributeValue{
+			"customer": &types.AttributeValueMemberS{Value: customerDID.String()},
+		},
+		ProjectionExpression: aws.String("customer"),
+	}
+
+	result, err := d.client.GetItem(ctx, input)
+	if err != nil {
+		return false, fmt.Errorf("checking customer existence: %w", err)
+	}
+
+	return result.Item != nil, nil
+}

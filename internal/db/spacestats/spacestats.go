@@ -14,5 +14,5 @@ type DailyStats struct {
 
 type SpaceStatsTable interface {
 	Record(ctx context.Context, space did.DID, egress uint64) error
-	GetDailyStats(ctx context.Context, space did.DID, since time.Time) ([]DailyStats, error)
+	GetDailyStats(ctx context.Context, space did.DID, from time.Time, to time.Time) ([]DailyStats, error)
 }
