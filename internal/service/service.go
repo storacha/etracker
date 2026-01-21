@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"slices"
+	"strings"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -27,15 +28,15 @@ import (
 var log = logging.Logger("service")
 
 type ErrAccountNotFound struct {
-	msg string
+	accountDID did.DID
 }
 
-func NewAccountNotFoundError(msg string) ErrAccountNotFound {
-	return ErrAccountNotFound{msg: msg}
+func NewAccountNotFoundError(accountDID did.DID) ErrAccountNotFound {
+	return ErrAccountNotFound{accountDID: accountDID}
 }
 
 func (e ErrAccountNotFound) Error() string {
-	return e.msg
+	return fmt.Sprintf("customer account %s not found", e.accountDID)
 }
 
 type ErrPeriodNotAcceptable struct {
@@ -51,15 +52,30 @@ func (e ErrPeriodNotAcceptable) Error() string {
 }
 
 type ErrSpaceUnauthorized struct {
-	msg string
+	unAuthSpaces []did.DID
 }
 
-func NewSpaceUnauthorizedError(msg string) ErrSpaceUnauthorized {
-	return ErrSpaceUnauthorized{msg: msg}
+func NewSpaceUnauthorizedError(unAuthSpaces []did.DID) ErrSpaceUnauthorized {
+	return ErrSpaceUnauthorized{unAuthSpaces: unAuthSpaces}
 }
 
 func (e ErrSpaceUnauthorized) Error() string {
-	return e.msg
+	switch {
+	case len(e.unAuthSpaces) == 1:
+		return fmt.Sprintf("space %s is not owned by account", e.unAuthSpaces[0])
+	case len(e.unAuthSpaces) > 5:
+		unAuthSpaces := make([]string, 0, 5) // Limit number of spaces in error message
+		for i := range 5 {
+			unAuthSpaces = append(unAuthSpaces, e.unAuthSpaces[i].String())
+		}
+		return fmt.Sprintf("spaces %s (and %d more) are not owned by account", strings.Join(unAuthSpaces, ", "), len(e.unAuthSpaces)-5)
+	default:
+		unAuthSpaces := make([]string, 0, len(e.unAuthSpaces))
+		for _, s := range e.unAuthSpaces {
+			unAuthSpaces = append(unAuthSpaces, s.String())
+		}
+		return fmt.Sprintf("spaces %s are not owned by account", strings.Join(unAuthSpaces, ","))
+	}
 }
 
 // SpaceEgress holds egress data for a single space
@@ -271,7 +287,7 @@ func (s *Service) GetAccountEgress(
 		return nil, err
 	}
 	if !exists {
-		return nil, NewAccountNotFoundError(fmt.Sprintf("customer account %s not found", accountDID))
+		return nil, NewAccountNotFoundError(accountDID)
 	}
 
 	// 2. Determine which spaces to query
@@ -282,10 +298,14 @@ func (s *Service) GetAccountEgress(
 	spacesToQuery := allSpaces
 	if len(spacesFilter) != 0 {
 		// Validate requested spaces belong to account
+		unAuthSpaces := make([]did.DID, 0)
 		for _, s := range spacesFilter {
 			if !slices.Contains(allSpaces, s) {
-				return nil, NewSpaceUnauthorizedError(fmt.Sprintf("space %s is not owned by account %s", s, accountDID))
+				unAuthSpaces = append(unAuthSpaces, s)
 			}
+		}
+		if len(unAuthSpaces) != 0 {
+			return nil, NewSpaceUnauthorizedError(unAuthSpaces)
 		}
 
 		spacesToQuery = spacesFilter
