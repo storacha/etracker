@@ -2,8 +2,9 @@ package service
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"net/url"
+	"slices"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -25,7 +26,41 @@ import (
 
 var log = logging.Logger("service")
 
-var ErrAccountNotFound = errors.New("customer account not found")
+type ErrAccountNotFound struct {
+	msg string
+}
+
+func NewAccountNotFoundError(msg string) ErrAccountNotFound {
+	return ErrAccountNotFound{msg: msg}
+}
+
+func (e ErrAccountNotFound) Error() string {
+	return e.msg
+}
+
+type ErrPeriodNotAcceptable struct {
+	msg string
+}
+
+func NewPeriodNotAcceptableError(msg string) ErrPeriodNotAcceptable {
+	return ErrPeriodNotAcceptable{msg: msg}
+}
+
+func (e ErrPeriodNotAcceptable) Error() string {
+	return e.msg
+}
+
+type ErrSpaceUnauthorized struct {
+	msg string
+}
+
+func NewSpaceUnauthorizedError(msg string) ErrSpaceUnauthorized {
+	return ErrSpaceUnauthorized{msg: msg}
+}
+
+func (e ErrSpaceUnauthorized) Error() string {
+	return e.msg
+}
 
 // SpaceEgress holds egress data for a single space
 type SpaceEgress struct {
@@ -207,6 +242,8 @@ func (s *Service) getAccountStats(
 	return stats, err
 }
 
+const maxPeriodDays = 60
+
 // defaultPeriod returns a period from the first day of the last complete month to today
 func defaultPeriod() Period {
 	now := time.Now().UTC()
@@ -234,17 +271,24 @@ func (s *Service) GetAccountEgress(
 		return nil, err
 	}
 	if !exists {
-		return nil, ErrAccountNotFound
+		return nil, NewAccountNotFoundError(fmt.Sprintf("customer account %s not found", accountDID))
 	}
 
 	// 2. Determine which spaces to query
-	spacesToQuery := spacesFilter
-	if len(spacesFilter) == 0 {
-		allSpaces, err := s.consumerTable.ListByCustomer(ctx, accountDID)
-		if err != nil {
-			return nil, err
+	allSpaces, err := s.consumerTable.ListByCustomer(ctx, accountDID)
+	if err != nil {
+		return nil, err
+	}
+	spacesToQuery := allSpaces
+	if len(spacesFilter) != 0 {
+		// Validate requested spaces belong to account
+		for _, s := range spacesFilter {
+			if !slices.Contains(allSpaces, s) {
+				return nil, NewSpaceUnauthorizedError(fmt.Sprintf("space %s is not owned by account %s", s, accountDID))
+			}
 		}
-		spacesToQuery = allSpaces
+
+		spacesToQuery = spacesFilter
 	}
 
 	// 3. If no spaces, return success with zeros (as per requirement)
@@ -257,10 +301,20 @@ func (s *Service) GetAccountEgress(
 
 	// 4. Determine query time range
 	// Default: first day of last complete month to today
-	period := periodFilter
-	if period == nil {
-		defaultPeriod := defaultPeriod()
-		period = &defaultPeriod
+	period := defaultPeriod()
+	if periodFilter != nil {
+		from := time.Date(periodFilter.From.Year(), periodFilter.From.Month(), periodFilter.From.Day(), 0, 0, 0, 0, period.From.Location())
+		to := time.Date(periodFilter.To.Year(), periodFilter.To.Month(), periodFilter.To.Day(), 0, 0, 0, 0, period.To.Location())
+		if from.After(to) || from.Equal(to) {
+			return nil, NewPeriodNotAcceptableError(fmt.Sprintf("'from' date %s is after or same as 'to' date %s", from, to))
+		}
+
+		daysBetween := int(to.Sub(from).Hours() / 24)
+		if daysBetween > maxPeriodDays {
+			return nil, NewPeriodNotAcceptableError(fmt.Sprintf("requested period exceeds maximum of %d days", maxPeriodDays))
+		}
+
+		period = *periodFilter
 	}
 
 	// 5. Fetch and aggregate stats for each space

@@ -103,12 +103,27 @@ func ucanAccountEgressGetHandler(svc *service.Service) func(
 		// 3. Call service layer
 		egressData, err := svc.GetAccountEgress(ctx, accountDID, spacesFilter, periodFilter)
 		if err != nil {
-			// Check if account not found using errors.Is
-			if errors.Is(err, service.ErrAccountNotFound) {
+			var accErr service.ErrAccountNotFound
+			if errors.As(err, &accErr) {
 				return result.Error[accountegress.GetOk, accountegress.GetError](
-					accountegress.NewAccountNotFoundError(err.Error()),
+					accountegress.NewAccountNotFoundError(accErr.Error()),
 				), nil, nil
 			}
+
+			var spaceErr service.ErrSpaceUnauthorized
+			if errors.As(err, &spaceErr) {
+				return result.Error[accountegress.GetOk, accountegress.GetError](
+					accountegress.NewSpaceUnauthorizedError(spaceErr.Error()),
+				), nil, nil
+			}
+
+			var periodErr service.ErrPeriodNotAcceptable
+			if errors.As(err, &periodErr) {
+				return result.Error[accountegress.GetOk, accountegress.GetError](
+					accountegress.NewPeriodNotAcceptableError(periodErr.Error()),
+				), nil, nil
+			}
+
 			// System error
 			return nil, nil, err
 		}
