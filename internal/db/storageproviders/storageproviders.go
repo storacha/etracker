@@ -9,6 +9,7 @@ import (
 
 type StorageProviderRecord struct {
 	Provider      did.DID
+	WalletAddress string
 	OperatorEmail string
 	Endpoint      string
 }

@@ -57,6 +57,7 @@
                             <tr>
                                 <th class="col-operator">Operator Email</th>
                                 <th class="col-provider">Node</th>
+                                <th class="col-wallet">Wallet Address</th>
                                 <th class="col-stat">Current Day</th>
                                 <th class="col-stat">Current Week</th>
                                 <th class="col-stat">Current Month</th>
@@ -68,6 +69,7 @@
                             <tr>
                                 <td class="operator-email">{{.Provider.OperatorEmail}}</td>
                                 <td class="provider-did" title="{{.Provider.Endpoint}}">{{.Provider.Provider.String}}</td>
+                                <td class="wallet-address">{{.Provider.WalletAddress}}</td>
                                 {{if .StatsError}}
                                 <td colspan="4" class="stats-error">Error: {{.StatsError.Error}}</td>
                                 {{else if .Stats}}
