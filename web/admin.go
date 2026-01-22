@@ -108,13 +108,13 @@ func formatBytes(b uint64) string {
 		div *= unit
 		exp++
 	}
-	return fmt.Sprintf("%.2f %cB", float64(b)/float64(div), "KMGTPE"[exp])
+	return fmt.Sprintf("%.2f %ciB", float64(b)/float64(div), "KMGTPE"[exp])
 }
 
 func formatDate(t interface{}) string {
 	// Handle time.Time
 	if v, ok := t.(interface{ Format(string) string }); ok {
-		return v.Format("2006-01-02 15:04 MST")
+		return v.Format("2006-01-02")
 	}
 	return fmt.Sprintf("%v", t)
 }

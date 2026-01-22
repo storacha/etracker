@@ -12,7 +12,7 @@ body {
 }
 
 .container {
-    max-width: 1400px;
+    max-width: 1600px;
     margin: 0 auto;
     padding: 0;
 }
@@ -303,6 +303,13 @@ button:active {
     color: #666;
     white-space: nowrap;
     min-width: 400px;
+}
+
+.providers-table td.wallet-address {
+    font-family: 'DM Mono', 'Courier New', monospace;
+    font-size: 0.85em;
+    color: #666;
+    white-space: nowrap;
 }
 
 .providers-table td.account-did {
