@@ -61,6 +61,19 @@ func TestValidateRetrievalReceipt(t *testing.T) {
 
 	// trust attestations from the upload service
 	uploadServiceID := testutil.WebService
+	attestDlg, err := delegation.Delegate(
+		consolidatorID,
+		uploadServiceID,
+		[]ucan.Capability[ucan.NoCaveats]{
+			ucan.NewCapability(
+				ucancap.AttestAbility,
+				consolidatorID.DID().String(),
+				ucan.NoCaveats{},
+			),
+		},
+		delegation.WithNoExpiration(),
+	)
+	require.NoError(t, err)
 
 	knownProvider, err := did.Parse("did:web:up.test.storacha.network")
 	require.NoError(t, err)
@@ -85,7 +98,7 @@ func TestValidateRetrievalReceipt(t *testing.T) {
 
 			return did.Undef, validator.NewDIDKeyResolutionError(input, fmt.Errorf("%s not found in mapping", input.String()))
 		},
-		[]string{uploadServiceID.DID().String()},
+		[]delegation.Delegation{attestDlg},
 	)
 	require.NoError(t, err)
 

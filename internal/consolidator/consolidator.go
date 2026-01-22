@@ -13,7 +13,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/storacha/go-libstoracha/capabilities/space/content"
 	capegress "github.com/storacha/go-libstoracha/capabilities/space/egress"
-	ucancap "github.com/storacha/go-libstoracha/capabilities/ucan"
 	"github.com/storacha/go-ucanto/client"
 	"github.com/storacha/go-ucanto/core/car"
 	"github.com/storacha/go-ucanto/core/dag/blockstore"
@@ -71,35 +70,8 @@ func New(
 	interval time.Duration,
 	batchSize int,
 	presolver validator.PrincipalResolverFunc,
-	trustedAuthorities []string,
+	authProofs []delegation.Delegation,
 ) (*Consolidator, error) {
-	// trust attestations from trusted authorities
-	var authProofs []delegation.Delegation
-	for _, authority := range trustedAuthorities {
-		auth, err := did.Parse(authority)
-		if err != nil {
-			return nil, fmt.Errorf("parsing trusted authority: %w", err)
-		}
-
-		attestDlg, err := delegation.Delegate(
-			id,
-			auth,
-			[]ucan.Capability[ucan.NoCaveats]{
-				ucan.NewCapability(
-					ucancap.AttestAbility,
-					id.DID().String(),
-					ucan.NoCaveats{},
-				),
-			},
-			delegation.WithNoExpiration(),
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		authProofs = append(authProofs, attestDlg)
-	}
-
 	retrieveValidationCtx := validator.NewValidationContext(
 		id.Verifier(),
 		content.Retrieve,
