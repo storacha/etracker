@@ -171,8 +171,8 @@ func main() {
 	})
 
 	// Wrap admin handler with authentication
-	// Use a default pricing value for preview ($10 per TiB)
-	adminHandler := web.BasicAuthMiddleware(web.AdminHandler(mockSvc, 10.0), username, password)
+	// Use a default pricing value for preview (clients: $10 per TiB, providers: $2.80 per TiB)
+	adminHandler := web.BasicAuthMiddleware(web.AdminHandler(mockSvc, 10.00, 2.80), username, password)
 	mux.HandleFunc("/admin", adminHandler)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/admin", http.StatusFound)

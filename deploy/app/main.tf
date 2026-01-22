@@ -55,8 +55,12 @@ module "app" {
   # NOTE: do not put sensitive data in env-vars. use secrets
   deployment_env_vars = [
     {
-      name = "ETRACKER_EGRESS_DOLLARS_PER_TIB"
-      value = var.egress_dollars_per_tib
+      name = "ETRACKER_CLIENT_EGRESS_DOLLARS_PER_TIB"
+      value = var.client_egress_dollars_per_tib
+    },
+    {
+      name = "ETRACKER_PROVIDER_EGRESS_DOLLARS_PER_TIB"
+      value = var.provider_egress_dollars_per_tib
     }
   ]
   image_tag = var.image_tag

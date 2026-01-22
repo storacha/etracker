@@ -67,7 +67,8 @@ func init() {
 	cobra.CheckErr(viper.BindEnv("metrics_auth_token"))
 	cobra.CheckErr(viper.BindEnv("admin_dashboard_user"))
 	cobra.CheckErr(viper.BindEnv("admin_dashboard_password"))
-	cobra.CheckErr(viper.BindEnv("egress_dollars_per_tib"))
+	cobra.CheckErr(viper.BindEnv("client_egress_dollars_per_tib"))
+	cobra.CheckErr(viper.BindEnv("provider_egress_dollars_per_tib"))
 
 	startCmd.Flags().String(
 		"egress-table-name",
@@ -243,7 +244,7 @@ func startService(cmd *cobra.Command, args []string) error {
 		cons,
 		server.WithMetricsEndpoint(cfg.MetricsAuthToken),
 		server.WithAdminCreds(cfg.AdminDashboardUser, cfg.AdminDashboardPassword),
-		server.WithPricing(cfg.EgressDollarsPerTiB),
+		server.WithPricing(cfg.ClientEgressDollarsPerTiB, cfg.ProviderEgressDollarsPerTiB),
 		server.WithPrincipalResolver(presolver),
 	)
 	if err != nil {

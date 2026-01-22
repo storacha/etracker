@@ -82,14 +82,15 @@ var loginTemplateHTML string
 var loginCSS string
 
 type adminDashboardData struct {
-	ActiveTab           string
-	Providers           []service.ProviderWithStats
-	Accounts            []service.AccountStats
-	NextToken           *string
-	PrevToken           *string
-	Error               string
-	CSS                 template.CSS
-	EgressDollarsPerTiB float64
+	ActiveTab                   string
+	Providers                   []service.ProviderWithStats
+	Accounts                    []service.AccountStats
+	NextToken                   *string
+	PrevToken                   *string
+	Error                       string
+	CSS                         template.CSS
+	ClientEgressDollarsPerTiB   float64
+	ProviderEgressDollarsPerTiB float64
 }
 
 type loginData struct {
@@ -228,7 +229,7 @@ func BasicAuthMiddleware(handler http.HandlerFunc, username, password string) ht
 }
 
 // AdminHandler returns an HTTP handler for the admin dashboard
-func AdminHandler(svc StatsService, egressDollarsPerTiB float64) http.HandlerFunc {
+func AdminHandler(svc StatsService, clientEgressDollarsPerTiB, providerEgressDollarsPerTiB float64) http.HandlerFunc {
 	tmpl := template.Must(template.New("admin").Funcs(template.FuncMap{
 		"formatBytes":   formatBytes,
 		"formatDate":    formatDate,
@@ -239,8 +240,9 @@ func AdminHandler(svc StatsService, egressDollarsPerTiB float64) http.HandlerFun
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		data := adminDashboardData{
-			CSS:                 template.CSS(adminCSS),
-			EgressDollarsPerTiB: egressDollarsPerTiB,
+			CSS:                         template.CSS(adminCSS),
+			ClientEgressDollarsPerTiB:   clientEgressDollarsPerTiB,
+			ProviderEgressDollarsPerTiB: providerEgressDollarsPerTiB,
 		}
 
 		// Get active tab from query parameter (default to "providers")
