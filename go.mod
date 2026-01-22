@@ -2,8 +2,6 @@ module github.com/storacha/etracker
 
 go 1.25.3
 
-replace github.com/storacha/go-libstoracha => ../go-libstoracha
-
 require (
 	github.com/aws/aws-sdk-go-v2 v1.39.2
 	github.com/aws/aws-sdk-go-v2/config v1.31.10
@@ -16,7 +14,7 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/viper v1.8.1
-	github.com/storacha/go-libstoracha v0.0.0-00010101000000-000000000000
+	github.com/storacha/go-libstoracha v0.7.0
 	github.com/storacha/go-ucanto v0.7.1
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel v1.38.0
@@ -135,5 +133,5 @@ require (
 	gopkg.in/ini.v1 v1.62.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	lukechampine.com/blake3 v1.4.0 // indirect
+	lukechampine.com/blake3 v1.4.1 // indirect
 )
