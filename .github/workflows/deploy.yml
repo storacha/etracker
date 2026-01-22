@@ -34,6 +34,7 @@ jobs:
       workspace: warm-staging
       network: warm
       did: did:web:staging.etracker.warm.storacha.network
+      egress-dollars-per-tib: ${{ vars.WARM_STAGING_EGRESS_DOLLARS_PER_TIB }}
       apply: ${{ github.event_name != 'pull_request' }}
     secrets:
       aws-account-id: ${{ secrets.WARM_STAGING_AWS_ACCOUNT_ID }}
@@ -54,6 +55,7 @@ jobs:
       workspace: forge-prod
       network: forge
       did: did:web:etracker.forge.storacha.network
+      egress-dollars-per-tib: ${{ vars.FORGE_PROD_EGRESS_DOLLARS_PER_TIB }}
       apply: ${{ (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'forge-production') }}
     secrets:
       aws-account-id: ${{ secrets.FORGE_PROD_AWS_ACCOUNT_ID }}

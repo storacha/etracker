@@ -21,6 +21,7 @@ type config struct {
 	metricsEndpointToken string
 	adminUser            string
 	adminPassword        string
+	egressDollarsPerTiB  float64
 	principalResolver    validator.PrincipalResolver
 }
 
@@ -36,6 +37,12 @@ func WithAdminCreds(user, password string) Option {
 	return func(c *config) {
 		c.adminUser = user
 		c.adminPassword = password
+	}
+}
+
+func WithPricing(egressDollarsPerTiB float64) Option {
+	return func(c *config) {
+		c.egressDollarsPerTiB = egressDollarsPerTiB
 	}
 }
 
@@ -80,7 +87,7 @@ func (s *Server) ListenAndServe(addr string) error {
 	mux.HandleFunc("GET /receipts/{cid}", s.getReceiptsHandler())
 
 	// Set up admin endpoint with authentication (handles both GET and POST)
-	adminHandler := web.BasicAuthMiddleware(web.AdminHandler(s.svc), s.cfg.adminUser, s.cfg.adminPassword)
+	adminHandler := web.BasicAuthMiddleware(web.AdminHandler(s.svc, s.cfg.egressDollarsPerTiB), s.cfg.adminUser, s.cfg.adminPassword)
 	mux.HandleFunc("GET /admin", adminHandler)
 	mux.HandleFunc("POST /admin", adminHandler)
 

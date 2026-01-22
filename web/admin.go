@@ -82,13 +82,14 @@ var loginTemplateHTML string
 var loginCSS string
 
 type adminDashboardData struct {
-	ActiveTab string
-	Providers []service.ProviderWithStats
-	Accounts  []service.AccountStats
-	NextToken *string
-	PrevToken *string
-	Error     string
-	CSS       template.CSS
+	ActiveTab           string
+	Providers           []service.ProviderWithStats
+	Accounts            []service.AccountStats
+	NextToken           *string
+	PrevToken           *string
+	Error               string
+	CSS                 template.CSS
+	EgressDollarsPerTiB float64
 }
 
 type loginData struct {
@@ -116,6 +117,12 @@ func formatDate(t interface{}) string {
 		return v.Format("2006-01-02 15:04 MST")
 	}
 	return fmt.Sprintf("%v", t)
+}
+
+func formatDollars(bytes uint64, dollarsPerTiB float64) string {
+	const bytesPerTiB = 1024 * 1024 * 1024 * 1024
+	dollars := (float64(bytes) / bytesPerTiB) * dollarsPerTiB
+	return fmt.Sprintf("$%.2f", dollars)
 }
 
 // showLoginForm renders the login form
@@ -221,17 +228,19 @@ func BasicAuthMiddleware(handler http.HandlerFunc, username, password string) ht
 }
 
 // AdminHandler returns an HTTP handler for the admin dashboard
-func AdminHandler(svc StatsService) http.HandlerFunc {
+func AdminHandler(svc StatsService, egressDollarsPerTiB float64) http.HandlerFunc {
 	tmpl := template.Must(template.New("admin").Funcs(template.FuncMap{
-		"formatBytes": formatBytes,
-		"formatDate":  formatDate,
+		"formatBytes":   formatBytes,
+		"formatDate":    formatDate,
+		"formatDollars": formatDollars,
 	}).Parse(adminTemplateHTML))
 
 	const defaultLimit = 20
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		data := adminDashboardData{
-			CSS: template.CSS(adminCSS),
+			CSS:                 template.CSS(adminCSS),
+			EgressDollarsPerTiB: egressDollarsPerTiB,
 		}
 
 		// Get active tab from query parameter (default to "providers")
