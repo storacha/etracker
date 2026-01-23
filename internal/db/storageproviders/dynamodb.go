@@ -30,7 +30,7 @@ func (d *DynamoStorageProviderTable) Get(ctx context.Context, provider did.DID) 
 		Key: map[string]types.AttributeValue{
 			"provider": &types.AttributeValueMemberS{Value: provider.String()},
 		},
-		ProjectionExpression: aws.String("provider, operatorEmail, endpoint"),
+		ProjectionExpression: aws.String("provider, address, operatorEmail, endpoint"),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("getting storage provider: %w", err)
@@ -46,7 +46,7 @@ func (d *DynamoStorageProviderTable) Get(ctx context.Context, provider did.DID) 
 func (d *DynamoStorageProviderTable) GetAll(ctx context.Context, limit int, startToken *string) (*GetAllResult, error) {
 	input := &dynamodb.ScanInput{
 		TableName:            aws.String(d.tableName),
-		ProjectionExpression: aws.String("provider, operatorEmail, endpoint"),
+		ProjectionExpression: aws.String("provider, address, operatorEmail, endpoint"),
 		Limit:                aws.Int32(int32(limit)),
 	}
 
@@ -93,6 +93,7 @@ func (d *DynamoStorageProviderTable) GetAll(ctx context.Context, limit int, star
 // We only unmarshal the fields we need
 type storageProviderRecord struct {
 	Provider      string `dynamodbav:"provider"`
+	Address       string `dynamodbav:"address"`
 	OperatorEmail string `dynamodbav:"operatorEmail"`
 	Endpoint      string `dynamodbav:"endpoint"`
 }
@@ -110,6 +111,7 @@ func (d *DynamoStorageProviderTable) unmarshalRecord(item map[string]types.Attri
 
 	return &StorageProviderRecord{
 		Provider:      provider,
+		WalletAddress: record.Address,
 		OperatorEmail: record.OperatorEmail,
 		Endpoint:      record.Endpoint,
 	}, nil
