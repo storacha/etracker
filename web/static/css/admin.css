@@ -12,7 +12,7 @@ body {
 }
 
 .container {
-    max-width: 1650px;
+    max-width: 2000px;
     margin: 0 auto;
     padding: 0;
 }
@@ -272,7 +272,7 @@ button:active {
 }
 
 .providers-table th.col-stat {
-    text-align: right;
+    text-align: center;
 }
 
 .providers-table tbody tr {
@@ -302,7 +302,7 @@ button:active {
     font-size: 0.85em;
     color: #666;
     white-space: nowrap;
-    min-width: 400px;
+    min-width: 320px;
 }
 
 .providers-table td.wallet-address {
@@ -310,6 +310,7 @@ button:active {
     font-size: 0.85em;
     color: #666;
     white-space: nowrap;
+    min-width: 320px;
 }
 
 .providers-table td.account-did {
@@ -317,7 +318,7 @@ button:active {
     font-size: 0.85em;
     color: #666;
     white-space: nowrap;
-    min-width: 400px;
+    min-width: 320px;
     font-weight: 500;
 }
 
@@ -325,6 +326,26 @@ button:active {
     text-align: right;
     font-variant-numeric: tabular-nums;
     font-weight: 600;
+}
+
+.providers-table td.stat-bytes {
+    font-family: 'DM Mono', 'Courier New', monospace;
+    font-size: 0.85em;
+    color: #666;
+    white-space: nowrap;
+    padding-left: 8px;
+    padding-right: 20px;
+}
+
+.providers-table td.stat-currency {
+    color: #000;
+    padding-left: 8px;
+    padding-right: 20px;
+    border-right: 2px solid #e0e0e0;
+}
+
+.providers-table td.stat-currency:last-child {
+    border-right: none;
 }
 
 .providers-table td.stats-error {

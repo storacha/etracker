@@ -58,10 +58,10 @@
                                 <th class="col-operator">Operator Email</th>
                                 <th class="col-provider">Node</th>
                                 <th class="col-wallet">Wallet Address</th>
-                                <th class="col-stat">Current Day</th>
-                                <th class="col-stat">Current Week</th>
-                                <th class="col-stat">Current Month</th>
-                                <th class="col-stat">Previous Month</th>
+                                <th class="col-stat" colspan="2">Current Day</th>
+                                <th class="col-stat" colspan="2">Current Week</th>
+                                <th class="col-stat" colspan="2">Current Month</th>
+                                <th class="col-stat" colspan="2">Previous Month</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -71,14 +71,18 @@
                                 <td class="provider-did" title="{{.Provider.Endpoint}}">{{.Provider.Provider.String}}</td>
                                 <td class="wallet-address">{{.Provider.WalletAddress}}</td>
                                 {{if .StatsError}}
-                                <td colspan="4" class="stats-error">Error: {{.StatsError.Error}}</td>
+                                <td colspan="8" class="stats-error">Error: {{.StatsError.Error}}</td>
                                 {{else if .Stats}}
-                                <td class="stat-value" title="{{.Stats.CurrentDay.Egress | formatBytes}}">{{formatCurrency .Stats.CurrentDay.Egress $.ProviderEgressUSDPerTiB}}</td>
-                                <td class="stat-value" title="{{.Stats.CurrentWeek.Egress | formatBytes}}">{{formatCurrency .Stats.CurrentWeek.Egress $.ProviderEgressUSDPerTiB}}</td>
-                                <td class="stat-value" title="{{.Stats.CurrentMonth.Egress | formatBytes}}">{{formatCurrency .Stats.CurrentMonth.Egress $.ProviderEgressUSDPerTiB}}</td>
-                                <td class="stat-value" title="{{.Stats.PreviousMonth.Egress | formatBytes}}">{{formatCurrency .Stats.PreviousMonth.Egress $.ProviderEgressUSDPerTiB}}</td>
+                                <td class="stat-value stat-bytes">{{.Stats.CurrentDay.Egress | formatBytes}}</td>
+                                <td class="stat-value stat-currency">{{formatCurrency .Stats.CurrentDay.Egress $.ProviderEgressUSDPerTiB}}</td>
+                                <td class="stat-value stat-bytes">{{.Stats.CurrentWeek.Egress | formatBytes}}</td>
+                                <td class="stat-value stat-currency">{{formatCurrency .Stats.CurrentWeek.Egress $.ProviderEgressUSDPerTiB}}</td>
+                                <td class="stat-value stat-bytes">{{.Stats.CurrentMonth.Egress | formatBytes}}</td>
+                                <td class="stat-value stat-currency">{{formatCurrency .Stats.CurrentMonth.Egress $.ProviderEgressUSDPerTiB}}</td>
+                                <td class="stat-value stat-bytes">{{.Stats.PreviousMonth.Egress | formatBytes}}</td>
+                                <td class="stat-value stat-currency">{{formatCurrency .Stats.PreviousMonth.Egress $.ProviderEgressUSDPerTiB}}</td>
                                 {{else}}
-                                <td colspan="4" class="no-stats">No stats available</td>
+                                <td colspan="8" class="no-stats">No stats available</td>
                                 {{end}}
                             </tr>
                             {{end}}
@@ -129,10 +133,10 @@
                         <thead>
                             <tr>
                                 <th class="col-account">Account</th>
-                                <th class="col-stat">Current Day</th>
-                                <th class="col-stat">Current Week</th>
-                                <th class="col-stat">Current Month</th>
-                                <th class="col-stat">Previous Month</th>
+                                <th class="col-stat" colspan="2">Current Day</th>
+                                <th class="col-stat" colspan="2">Current Week</th>
+                                <th class="col-stat" colspan="2">Current Month</th>
+                                <th class="col-stat" colspan="2">Previous Month</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -140,14 +144,18 @@
                             <tr>
                                 <td class="account-did">{{.Account.String}}</td>
                                 {{if .StatsError}}
-                                <td colspan="4" class="stats-error">Error: {{.StatsError.Error}}</td>
+                                <td colspan="8" class="stats-error">Error: {{.StatsError.Error}}</td>
                                 {{else if .Stats}}
-                                <td class="stat-value" title="{{.Stats.CurrentDay.Egress | formatBytes}}">{{formatCurrency .Stats.CurrentDay.Egress $.ClientEgressUSDPerTiB}}</td>
-                                <td class="stat-value" title="{{.Stats.CurrentWeek.Egress | formatBytes}}">{{formatCurrency .Stats.CurrentWeek.Egress $.ClientEgressUSDPerTiB}}</td>
-                                <td class="stat-value" title="{{.Stats.CurrentMonth.Egress | formatBytes}}">{{formatCurrency .Stats.CurrentMonth.Egress $.ClientEgressUSDPerTiB}}</td>
-                                <td class="stat-value" title="{{.Stats.PreviousMonth.Egress | formatBytes}}">{{formatCurrency .Stats.PreviousMonth.Egress $.ClientEgressUSDPerTiB}}</td>
+                                <td class="stat-value stat-bytes">{{.Stats.CurrentDay.Egress | formatBytes}}</td>
+                                <td class="stat-value stat-currency">{{formatCurrency .Stats.CurrentDay.Egress $.ClientEgressUSDPerTiB}}</td>
+                                <td class="stat-value stat-bytes">{{.Stats.CurrentWeek.Egress | formatBytes}}</td>
+                                <td class="stat-value stat-currency">{{formatCurrency .Stats.CurrentWeek.Egress $.ClientEgressUSDPerTiB}}</td>
+                                <td class="stat-value stat-bytes">{{.Stats.CurrentMonth.Egress | formatBytes}}</td>
+                                <td class="stat-value stat-currency">{{formatCurrency .Stats.CurrentMonth.Egress $.ClientEgressUSDPerTiB}}</td>
+                                <td class="stat-value stat-bytes">{{.Stats.PreviousMonth.Egress | formatBytes}}</td>
+                                <td class="stat-value stat-currency">{{formatCurrency .Stats.PreviousMonth.Egress $.ClientEgressUSDPerTiB}}</td>
                                 {{else}}
-                                <td colspan="4" class="no-stats">No stats available</td>
+                                <td colspan="8" class="no-stats">No stats available</td>
                                 {{end}}
                             </tr>
                             {{end}}
