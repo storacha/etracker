@@ -18,10 +18,10 @@ on:
         type: string
       client-egress-usd-per-tib:
         required: true
-        type: number
+        type: string
       provider-egress-usd-per-tib:
         required: true
-        type: number
+        type: string
       apply:
         required: true
         type: boolean
