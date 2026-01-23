@@ -18,12 +18,12 @@ import (
 var log = logging.Logger("server")
 
 type config struct {
-	metricsEndpointToken        string
-	adminUser                   string
-	adminPassword               string
-	clientEgressDollarsPerTiB   float64
-	providerEgressDollarsPerTiB float64
-	principalResolver           validator.PrincipalResolver
+	metricsEndpointToken    string
+	adminUser               string
+	adminPassword           string
+	clientEgressUSDPerTiB   float64
+	providerEgressUSDPerTiB float64
+	principalResolver       validator.PrincipalResolver
 }
 
 type Option func(*config)
@@ -41,10 +41,10 @@ func WithAdminCreds(user, password string) Option {
 	}
 }
 
-func WithPricing(clientEgressDollarsPerTiB, providerEgressDollarsPerTiB float64) Option {
+func WithPricing(clientEgressUSDPerTiB, providerEgressUSDPerTiB float64) Option {
 	return func(c *config) {
-		c.clientEgressDollarsPerTiB = clientEgressDollarsPerTiB
-		c.providerEgressDollarsPerTiB = providerEgressDollarsPerTiB
+		c.clientEgressUSDPerTiB = clientEgressUSDPerTiB
+		c.providerEgressUSDPerTiB = providerEgressUSDPerTiB
 	}
 }
 
@@ -89,7 +89,7 @@ func (s *Server) ListenAndServe(addr string) error {
 	mux.HandleFunc("GET /receipts/{cid}", s.getReceiptsHandler())
 
 	// Set up admin endpoint with authentication (handles both GET and POST)
-	adminHandler := web.BasicAuthMiddleware(web.AdminHandler(s.svc, s.cfg.clientEgressDollarsPerTiB, s.cfg.providerEgressDollarsPerTiB), s.cfg.adminUser, s.cfg.adminPassword)
+	adminHandler := web.BasicAuthMiddleware(web.AdminHandler(s.svc, s.cfg.clientEgressUSDPerTiB, s.cfg.providerEgressUSDPerTiB), s.cfg.adminUser, s.cfg.adminPassword)
 	mux.HandleFunc("GET /admin", adminHandler)
 	mux.HandleFunc("POST /admin", adminHandler)
 

@@ -67,12 +67,12 @@ variable "admin_dashboard_password" {
 }
 
 
-variable "client_egress_dollars_per_tib" {
-  description = "Client egress cost in dollars per TiB"
+variable "client_egress_usd_per_tib" {
+  description = "Client egress cost in USD per TiB"
   type        = string
 }
 
-variable "provider_egress_dollars_per_tib" {
-  description = "Provider egress rate in dollars per TiB"
+variable "provider_egress_usd_per_tib" {
+  description = "Provider egress rate in USD per TiB"
   type        = string
 }

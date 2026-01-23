@@ -17,8 +17,8 @@ type Config struct {
 	MetricsAuthToken               string     `mapstructure:"metrics_auth_token"`
 	AdminDashboardUser             string     `mapstructure:"admin_dashboard_user"`
 	AdminDashboardPassword         string     `mapstructure:"admin_dashboard_password"`
-	ClientEgressDollarsPerTiB      float64    `mapstructure:"client_egress_dollars_per_tib"`
-	ProviderEgressDollarsPerTiB    float64    `mapstructure:"provider_egress_dollars_per_tib"`
+	ClientEgressUSDPerTiB          float64    `mapstructure:"client_egress_usd_per_tib"`
+	ProviderEgressUSDPerTiB        float64    `mapstructure:"provider_egress_usd_per_tib"`
 	AWSConfig                      aws.Config `mapstructure:"aws_config"`
 	EgressTableName                string     `mapstructure:"egress_table_name" validate:"required"`
 	EgressUnprocessedIndexName     string     `mapstructure:"egress_unprocessed_index_name" validate:"required"`

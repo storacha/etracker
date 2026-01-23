@@ -16,10 +16,10 @@ on:
       did:
         required: true
         type: string
-      client-egress-dollars-per-tib:
+      client-egress-usd-per-tib:
         required: true
         type: number
-      provider-egress-dollars-per-tib:
+      provider-egress-usd-per-tib:
         required: true
         type: number
       apply:
@@ -64,8 +64,8 @@ env:
   TF_VAR_metrics_auth_token: ${{ secrets.metrics-auth-token }}
   TF_VAR_admin_dashboard_user: ${{ secrets.admin-dashboard-user }}
   TF_VAR_admin_dashboard_password: ${{ secrets.admin-dashboard-password }}
-  TF_VAR_client_egress_dollars_per_tib: ${{ inputs.client-egress-dollars-per-tib }}
-  TF_VAR_provider_egress_dollars_per_tib: ${{ inputs.provider-egress-dollars-per-tib }}
+  TF_VAR_client_egress_usd_per_tib: ${{ inputs.client-egress-usd-per-tib }}
+  TF_VAR_provider_egress_usd_per_tib: ${{ inputs.provider-egress-usd-per-tib }}
   TF_VAR_cloudflare_zone_id: ${{ secrets.cloudflare-zone-id }}
   CLOUDFLARE_API_TOKEN: ${{ secrets.cloudflare-api-token }}
   DEPLOY_ENV: ci

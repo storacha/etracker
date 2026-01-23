@@ -73,10 +73,10 @@
                                 {{if .StatsError}}
                                 <td colspan="4" class="stats-error">Error: {{.StatsError.Error}}</td>
                                 {{else if .Stats}}
-                                <td class="stat-value" title="{{.Stats.CurrentDay.Egress | formatBytes}}">{{formatDollars .Stats.CurrentDay.Egress $.ProviderEgressDollarsPerTiB}}</td>
-                                <td class="stat-value" title="{{.Stats.CurrentWeek.Egress | formatBytes}}">{{formatDollars .Stats.CurrentWeek.Egress $.ProviderEgressDollarsPerTiB}}</td>
-                                <td class="stat-value" title="{{.Stats.CurrentMonth.Egress | formatBytes}}">{{formatDollars .Stats.CurrentMonth.Egress $.ProviderEgressDollarsPerTiB}}</td>
-                                <td class="stat-value" title="{{.Stats.PreviousMonth.Egress | formatBytes}}">{{formatDollars .Stats.PreviousMonth.Egress $.ProviderEgressDollarsPerTiB}}</td>
+                                <td class="stat-value" title="{{.Stats.CurrentDay.Egress | formatBytes}}">{{formatCurrency .Stats.CurrentDay.Egress $.ProviderEgressUSDPerTiB}}</td>
+                                <td class="stat-value" title="{{.Stats.CurrentWeek.Egress | formatBytes}}">{{formatCurrency .Stats.CurrentWeek.Egress $.ProviderEgressUSDPerTiB}}</td>
+                                <td class="stat-value" title="{{.Stats.CurrentMonth.Egress | formatBytes}}">{{formatCurrency .Stats.CurrentMonth.Egress $.ProviderEgressUSDPerTiB}}</td>
+                                <td class="stat-value" title="{{.Stats.PreviousMonth.Egress | formatBytes}}">{{formatCurrency .Stats.PreviousMonth.Egress $.ProviderEgressUSDPerTiB}}</td>
                                 {{else}}
                                 <td colspan="4" class="no-stats">No stats available</td>
                                 {{end}}
@@ -142,10 +142,10 @@
                                 {{if .StatsError}}
                                 <td colspan="4" class="stats-error">Error: {{.StatsError.Error}}</td>
                                 {{else if .Stats}}
-                                <td class="stat-value" title="{{.Stats.CurrentDay.Egress | formatBytes}}">{{formatDollars .Stats.CurrentDay.Egress $.ClientEgressDollarsPerTiB}}</td>
-                                <td class="stat-value" title="{{.Stats.CurrentWeek.Egress | formatBytes}}">{{formatDollars .Stats.CurrentWeek.Egress $.ClientEgressDollarsPerTiB}}</td>
-                                <td class="stat-value" title="{{.Stats.CurrentMonth.Egress | formatBytes}}">{{formatDollars .Stats.CurrentMonth.Egress $.ClientEgressDollarsPerTiB}}</td>
-                                <td class="stat-value" title="{{.Stats.PreviousMonth.Egress | formatBytes}}">{{formatDollars .Stats.PreviousMonth.Egress $.ClientEgressDollarsPerTiB}}</td>
+                                <td class="stat-value" title="{{.Stats.CurrentDay.Egress | formatBytes}}">{{formatCurrency .Stats.CurrentDay.Egress $.ClientEgressUSDPerTiB}}</td>
+                                <td class="stat-value" title="{{.Stats.CurrentWeek.Egress | formatBytes}}">{{formatCurrency .Stats.CurrentWeek.Egress $.ClientEgressUSDPerTiB}}</td>
+                                <td class="stat-value" title="{{.Stats.CurrentMonth.Egress | formatBytes}}">{{formatCurrency .Stats.CurrentMonth.Egress $.ClientEgressUSDPerTiB}}</td>
+                                <td class="stat-value" title="{{.Stats.PreviousMonth.Egress | formatBytes}}">{{formatCurrency .Stats.PreviousMonth.Egress $.ClientEgressUSDPerTiB}}</td>
                                 {{else}}
                                 <td colspan="4" class="no-stats">No stats available</td>
                                 {{end}}
