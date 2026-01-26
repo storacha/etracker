@@ -53,7 +53,16 @@ module "app" {
   # if there are any env vars you want available only to your container
   # in the vpc as opposed to set in the dockerfile, enter them here
   # NOTE: do not put sensitive data in env-vars. use secrets
-  deployment_env_vars = []
+  deployment_env_vars = [
+    {
+      name = "ETRACKER_CLIENT_EGRESS_USD_PER_TIB"
+      value = var.client_egress_usd_per_tib
+    },
+    {
+      name = "ETRACKER_PROVIDER_EGRESS_USD_PER_TIB"
+      value = var.provider_egress_usd_per_tib
+    }
+  ]
   image_tag = var.image_tag
   create_db = false
   # enter secret values your app will use here -- these will be available

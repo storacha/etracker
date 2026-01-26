@@ -36,7 +36,7 @@
                 {{with (index .Providers 0).Stats}}
                 <div class="period-info">
                     <div class="period-item">
-                        <strong>Current Day:</strong> {{.CurrentDay.Period.From | formatDate}} - {{.CurrentDay.Period.To | formatDate}}
+                        <strong>Current Day:</strong> {{.CurrentDay.Period.From | formatDate}}
                     </div>
                     <div class="period-item">
                         <strong>Current Week:</strong> {{.CurrentWeek.Period.From | formatDate}} - {{.CurrentWeek.Period.To | formatDate}}
@@ -57,10 +57,11 @@
                             <tr>
                                 <th class="col-operator">Operator Email</th>
                                 <th class="col-provider">Node</th>
-                                <th class="col-stat">Current Day</th>
-                                <th class="col-stat">Current Week</th>
-                                <th class="col-stat">Current Month</th>
-                                <th class="col-stat">Previous Month</th>
+                                <th class="col-wallet">Wallet Address</th>
+                                <th class="col-stat" colspan="2">Current Day</th>
+                                <th class="col-stat" colspan="2">Current Week</th>
+                                <th class="col-stat" colspan="2">Current Month</th>
+                                <th class="col-stat" colspan="2">Previous Month</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -68,15 +69,20 @@
                             <tr>
                                 <td class="operator-email">{{.Provider.OperatorEmail}}</td>
                                 <td class="provider-did" title="{{.Provider.Endpoint}}">{{.Provider.Provider.String}}</td>
+                                <td class="wallet-address">{{.Provider.WalletAddress}}</td>
                                 {{if .StatsError}}
-                                <td colspan="4" class="stats-error">Error: {{.StatsError.Error}}</td>
+                                <td colspan="8" class="stats-error">Error: {{.StatsError.Error}}</td>
                                 {{else if .Stats}}
-                                <td class="stat-value">{{.Stats.CurrentDay.Egress | formatBytes}}</td>
-                                <td class="stat-value">{{.Stats.CurrentWeek.Egress | formatBytes}}</td>
-                                <td class="stat-value">{{.Stats.CurrentMonth.Egress | formatBytes}}</td>
-                                <td class="stat-value">{{.Stats.PreviousMonth.Egress | formatBytes}}</td>
+                                <td class="stat-value stat-bytes">{{.Stats.CurrentDay.Egress | formatBytes}}</td>
+                                <td class="stat-value stat-currency">{{formatCurrency .Stats.CurrentDay.Egress $.ProviderEgressUSDPerTiB}}</td>
+                                <td class="stat-value stat-bytes">{{.Stats.CurrentWeek.Egress | formatBytes}}</td>
+                                <td class="stat-value stat-currency">{{formatCurrency .Stats.CurrentWeek.Egress $.ProviderEgressUSDPerTiB}}</td>
+                                <td class="stat-value stat-bytes">{{.Stats.CurrentMonth.Egress | formatBytes}}</td>
+                                <td class="stat-value stat-currency">{{formatCurrency .Stats.CurrentMonth.Egress $.ProviderEgressUSDPerTiB}}</td>
+                                <td class="stat-value stat-bytes">{{.Stats.PreviousMonth.Egress | formatBytes}}</td>
+                                <td class="stat-value stat-currency">{{formatCurrency .Stats.PreviousMonth.Egress $.ProviderEgressUSDPerTiB}}</td>
                                 {{else}}
-                                <td colspan="4" class="no-stats">No stats available</td>
+                                <td colspan="8" class="no-stats">No stats available</td>
                                 {{end}}
                             </tr>
                             {{end}}
@@ -107,7 +113,7 @@
                 {{with (index .Accounts 0).Stats}}
                 <div class="period-info">
                     <div class="period-item">
-                        <strong>Current Day:</strong> {{.CurrentDay.Period.From | formatDate}} - {{.CurrentDay.Period.To | formatDate}}
+                        <strong>Current Day:</strong> {{.CurrentDay.Period.From | formatDate}}
                     </div>
                     <div class="period-item">
                         <strong>Current Week:</strong> {{.CurrentWeek.Period.From | formatDate}} - {{.CurrentWeek.Period.To | formatDate}}
@@ -127,10 +133,10 @@
                         <thead>
                             <tr>
                                 <th class="col-account">Account</th>
-                                <th class="col-stat">Current Day</th>
-                                <th class="col-stat">Current Week</th>
-                                <th class="col-stat">Current Month</th>
-                                <th class="col-stat">Previous Month</th>
+                                <th class="col-stat" colspan="2">Current Day</th>
+                                <th class="col-stat" colspan="2">Current Week</th>
+                                <th class="col-stat" colspan="2">Current Month</th>
+                                <th class="col-stat" colspan="2">Previous Month</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -138,14 +144,18 @@
                             <tr>
                                 <td class="account-did">{{.Account.String}}</td>
                                 {{if .StatsError}}
-                                <td colspan="4" class="stats-error">Error: {{.StatsError.Error}}</td>
+                                <td colspan="8" class="stats-error">Error: {{.StatsError.Error}}</td>
                                 {{else if .Stats}}
-                                <td class="stat-value">{{.Stats.CurrentDay.Egress | formatBytes}}</td>
-                                <td class="stat-value">{{.Stats.CurrentWeek.Egress | formatBytes}}</td>
-                                <td class="stat-value">{{.Stats.CurrentMonth.Egress | formatBytes}}</td>
-                                <td class="stat-value">{{.Stats.PreviousMonth.Egress | formatBytes}}</td>
+                                <td class="stat-value stat-bytes">{{.Stats.CurrentDay.Egress | formatBytes}}</td>
+                                <td class="stat-value stat-currency">{{formatCurrency .Stats.CurrentDay.Egress $.ClientEgressUSDPerTiB}}</td>
+                                <td class="stat-value stat-bytes">{{.Stats.CurrentWeek.Egress | formatBytes}}</td>
+                                <td class="stat-value stat-currency">{{formatCurrency .Stats.CurrentWeek.Egress $.ClientEgressUSDPerTiB}}</td>
+                                <td class="stat-value stat-bytes">{{.Stats.CurrentMonth.Egress | formatBytes}}</td>
+                                <td class="stat-value stat-currency">{{formatCurrency .Stats.CurrentMonth.Egress $.ClientEgressUSDPerTiB}}</td>
+                                <td class="stat-value stat-bytes">{{.Stats.PreviousMonth.Egress | formatBytes}}</td>
+                                <td class="stat-value stat-currency">{{formatCurrency .Stats.PreviousMonth.Egress $.ClientEgressUSDPerTiB}}</td>
                                 {{else}}
-                                <td colspan="4" class="no-stats">No stats available</td>
+                                <td colspan="8" class="no-stats">No stats available</td>
                                 {{end}}
                             </tr>
                             {{end}}
@@ -166,5 +176,75 @@
             {{end}}
         {{end}}
     </div>
+    <style>
+        .copy-icon {
+            display: none;
+            position: absolute;
+            right: 4px;
+            top: 50%;
+            transform: translateY(-50%) scaleX(-1);
+            width: 14px;
+            height: 14px;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .providers-table tbody td {
+            position: relative;
+            padding-right: 24px;
+            transition: background-color 0.5s ease-out;
+        }
+
+        .providers-table tbody td:hover .copy-icon {
+            display: block;
+        }
+    </style>
+    <script>
+        // Make all table cells copyable on click with visual copy icon
+        document.addEventListener('DOMContentLoaded', function() {
+            const tables = document.querySelectorAll('.providers-table');
+
+            // SVG copy icon
+            const copyIconSVG = `
+                <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+            `;
+
+            tables.forEach(table => {
+                const cells = table.querySelectorAll('tbody td');
+
+                cells.forEach(cell => {
+                    cell.style.cursor = 'pointer';
+
+                    // Add copy icon to cell
+                    cell.insertAdjacentHTML('beforeend', copyIconSVG);
+
+                    cell.addEventListener('click', function() {
+                        // Get the text content
+                        const textToCopy = this.textContent.trim();
+
+                        if (!textToCopy || textToCopy === 'No stats available') {
+                            return;
+                        }
+
+                        // Copy to clipboard
+                        navigator.clipboard.writeText(textToCopy).then(() => {
+                            // Visual feedback with smooth fade
+                            const originalBg = this.style.backgroundColor;
+                            this.style.backgroundColor = '#d4edda';
+
+                            setTimeout(() => {
+                                this.style.backgroundColor = originalBg;
+                            }, 300);
+                        }).catch(err => {
+                            console.error('Failed to copy:', err);
+                        });
+                    });
+                });
+            });
+        });
+    </script>
 </body>
 </html>

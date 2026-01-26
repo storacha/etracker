@@ -82,13 +82,15 @@ var loginTemplateHTML string
 var loginCSS string
 
 type adminDashboardData struct {
-	ActiveTab string
-	Providers []service.ProviderWithStats
-	Accounts  []service.AccountStats
-	NextToken *string
-	PrevToken *string
-	Error     string
-	CSS       template.CSS
+	ActiveTab               string
+	Providers               []service.ProviderWithStats
+	Accounts                []service.AccountStats
+	NextToken               *string
+	PrevToken               *string
+	Error                   string
+	CSS                     template.CSS
+	ClientEgressUSDPerTiB   float64
+	ProviderEgressUSDPerTiB float64
 }
 
 type loginData struct {
@@ -107,15 +109,21 @@ func formatBytes(b uint64) string {
 		div *= unit
 		exp++
 	}
-	return fmt.Sprintf("%.2f %cB", float64(b)/float64(div), "KMGTPE"[exp])
+	return fmt.Sprintf("%.2f %ciB", float64(b)/float64(div), "KMGTPE"[exp])
 }
 
 func formatDate(t interface{}) string {
 	// Handle time.Time
 	if v, ok := t.(interface{ Format(string) string }); ok {
-		return v.Format("2006-01-02 15:04 MST")
+		return v.Format("2006-01-02")
 	}
 	return fmt.Sprintf("%v", t)
+}
+
+func formatUSD(bytes uint64, usdPerTiB float64) string {
+	const bytesPerTiB = 1024 * 1024 * 1024 * 1024
+	usd := (float64(bytes) / bytesPerTiB) * usdPerTiB
+	return fmt.Sprintf("$%.2f", usd)
 }
 
 // showLoginForm renders the login form
@@ -221,17 +229,20 @@ func BasicAuthMiddleware(handler http.HandlerFunc, username, password string) ht
 }
 
 // AdminHandler returns an HTTP handler for the admin dashboard
-func AdminHandler(svc StatsService) http.HandlerFunc {
+func AdminHandler(svc StatsService, clientEgressUSDPerTiB, providerEgressUSDPerTiB float64) http.HandlerFunc {
 	tmpl := template.Must(template.New("admin").Funcs(template.FuncMap{
-		"formatBytes": formatBytes,
-		"formatDate":  formatDate,
+		"formatBytes":    formatBytes,
+		"formatDate":     formatDate,
+		"formatCurrency": formatUSD,
 	}).Parse(adminTemplateHTML))
 
 	const defaultLimit = 20
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		data := adminDashboardData{
-			CSS: template.CSS(adminCSS),
+			CSS:                     template.CSS(adminCSS),
+			ClientEgressUSDPerTiB:   clientEgressUSDPerTiB,
+			ProviderEgressUSDPerTiB: providerEgressUSDPerTiB,
 		}
 
 		// Get active tab from query parameter (default to "providers")

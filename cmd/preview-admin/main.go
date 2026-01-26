@@ -21,8 +21,9 @@ func (m *mockService) getMockStats(node did.DID, multiplier float64) *service.St
 	now := time.Now().UTC()
 	currentYear, currentMonth, currentDay := now.Date()
 
-	// Mock data - showing realistic egress values with variation per provider
-	baseEgress := uint64(float64(156784325632) * multiplier)
+	// Mock data - showing large egress values (TiB to PiB range) with variation per provider
+	// Base is ~50 TiB, multipliers will create range from ~15 TiB to ~1.25 PiB
+	baseEgress := uint64(float64(54975581388800) * multiplier)
 
 	return &service.Stats{
 		PreviousMonth: service.PeriodStats{
@@ -63,32 +64,37 @@ func (m *mockService) GetAllProvidersStats(ctx context.Context, limit int, start
 			Provider:      must(did.Parse("did:key:z6MkrZ1r5XBFZjBU34qyD8fueMbMRkKw17BZaq2ivKFjnz2z")),
 			OperatorEmail: "operator1@example.com",
 			Endpoint:      "https://node1.storage.example.com",
+			WalletAddress: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1",
 		},
 		{
 			Provider:      must(did.Parse("did:key:z6MkwCQm4mGfvAQJ9FzQb5nR5qZ7VHmGQG3dFfvGH5xnU3Rr")),
 			OperatorEmail: "operator2@example.com",
 			Endpoint:      "https://node2.storage.example.com",
+			WalletAddress: "0x8Ba1f109551bD432803012645Ac136ddd64DBA72",
 		},
 		{
 			Provider:      must(did.Parse("did:key:z6MkfQ7kBJpPFZzLvXHGmF2nqC9v8eUxPRjzUgVZYQxQz3Kk")),
 			OperatorEmail: "operator3@example.com",
 			Endpoint:      "https://node3.storage.example.com",
+			WalletAddress: "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed",
 		},
 		{
 			Provider:      must(did.Parse("did:key:z6MkpTRfBGbZGJtQ2VXmV5qZ7VHmFxZ9LkH4JcNz8QdKr2Mm")),
 			OperatorEmail: "operator4@example.com",
 			Endpoint:      "https://node4.storage.example.com",
+			WalletAddress: "0xfB6916095ca1df60bB79Ce92cE3Ea74c37c5d359",
 		},
 		{
 			Provider:      must(did.Parse("did:key:z6MknHN3fvBZzG9QrZ5nJ8LxHmFxZ9LkH4JcNz8QdKr2Yy7p")),
 			OperatorEmail: "operator5@example.com",
 			Endpoint:      "https://node5.storage.example.com",
+			WalletAddress: "0xdbF03B407c01E7cD3CBea99509d93f8DDDC8C6FB",
 		},
 	}
 
 	// Build providers with stats - with varied data
 	providersWithStats := make([]service.ProviderWithStats, 0, len(mockProviders))
-	multipliers := []float64{1.5, 0.8, 2.1, 0.3, 1.0} // Different traffic levels
+	multipliers := []float64{1.5, 5.0, 12.0, 0.3, 25.0} // Different traffic levels from ~15 TiB to ~1.25 PiB
 	for i, provider := range mockProviders {
 		stats := m.getMockStats(provider.Provider, multipliers[i])
 		providersWithStats = append(providersWithStats, service.ProviderWithStats{
@@ -119,7 +125,7 @@ func (m *mockService) GetAllAccountsStats(ctx context.Context, limit int, startT
 
 	// Build accounts with stats - with varied data
 	accountsWithStats := make([]service.AccountStats, 0, len(mockAccounts))
-	multipliers := []float64{2.5, 1.8, 0.9, 3.2, 0.5, 1.2, 0.7} // Different usage levels
+	multipliers := []float64{8.0, 3.5, 0.8, 15.0, 1.2, 20.0, 0.4} // Different usage levels from ~20 TiB to ~1 PiB
 	for i, account := range mockAccounts {
 		stats := m.getMockStats(account, multipliers[i])
 		accountsWithStats = append(accountsWithStats, service.AccountStats{
@@ -165,7 +171,8 @@ func main() {
 	})
 
 	// Wrap admin handler with authentication
-	adminHandler := web.BasicAuthMiddleware(web.AdminHandler(mockSvc), username, password)
+	// Use a default pricing value for preview (clients: $10 per TiB, providers: $2.80 per TiB)
+	adminHandler := web.BasicAuthMiddleware(web.AdminHandler(mockSvc, 10.00, 2.80), username, password)
 	mux.HandleFunc("/admin", adminHandler)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/admin", http.StatusFound)

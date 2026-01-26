@@ -65,3 +65,14 @@ variable "admin_dashboard_password" {
   description = "value for admin_dashboard_password secret"
   type = string
 }
+
+
+variable "client_egress_usd_per_tib" {
+  description = "Client egress cost in USD per TiB"
+  type        = string
+}
+
+variable "provider_egress_usd_per_tib" {
+  description = "Provider egress rate in USD per TiB"
+  type        = string
+}
