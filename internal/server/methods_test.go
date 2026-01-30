@@ -74,7 +74,8 @@ func TestAccountEgressGetHandler(t *testing.T) {
 
 	t.Run("successful invocation with no filters", func(t *testing.T) {
 		// Setup
-		accountDID := testutil.RandomDID(t)
+		issuer := testutil.RandomSigner(t)
+		accountDID := issuer.DID()
 		space1 := testutil.RandomDID(t)
 		space2 := testutil.RandomDID(t)
 
@@ -111,7 +112,6 @@ func TestAccountEgressGetHandler(t *testing.T) {
 		require.NoError(t, err)
 
 		// Create invocation
-		issuer := testutil.RandomSigner(t)
 		inv, err := accountegress.Get.Invoke(
 			issuer,
 			serviceSigner,
@@ -140,17 +140,18 @@ func TestAccountEgressGetHandler(t *testing.T) {
 
 		assert.Equal(t, uint64(1500), ok2.Total)
 		assert.Len(t, ok2.Spaces.Keys, 2)
-		assert.Contains(t, ok2.Spaces.Keys, space1)
-		assert.Contains(t, ok2.Spaces.Keys, space2)
-		assert.Equal(t, uint64(1000), ok2.Spaces.Values[space1].Total)
-		assert.Len(t, ok2.Spaces.Values[space1].DailyStats, 2)
-		assert.Equal(t, uint64(500), ok2.Spaces.Values[space2].Total)
-		assert.Len(t, ok2.Spaces.Values[space2].DailyStats, 1)
+		assert.Contains(t, ok2.Spaces.Keys, space1.String())
+		assert.Contains(t, ok2.Spaces.Keys, space2.String())
+		assert.Equal(t, uint64(1000), ok2.Spaces.Values[space1.String()].Total)
+		assert.Len(t, ok2.Spaces.Values[space1.String()].DailyStats, 2)
+		assert.Equal(t, uint64(500), ok2.Spaces.Values[space2.String()].Total)
+		assert.Len(t, ok2.Spaces.Values[space2.String()].DailyStats, 1)
 	})
 
 	t.Run("successful invocation with spaces and period filters", func(t *testing.T) {
 		// Setup
-		accountDID := testutil.RandomDID(t)
+		issuer := testutil.RandomSigner(t)
+		accountDID := issuer.DID()
 		space1 := testutil.RandomDID(t)
 		from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 		to := time.Date(2024, 1, 31, 0, 0, 0, 0, time.UTC)
@@ -182,7 +183,6 @@ func TestAccountEgressGetHandler(t *testing.T) {
 		require.NoError(t, err)
 
 		// Create invocation
-		issuer := testutil.RandomSigner(t)
 		inv, err := accountegress.Get.Invoke(
 			issuer,
 			serviceSigner,
@@ -219,7 +219,8 @@ func TestAccountEgressGetHandler(t *testing.T) {
 
 	t.Run("returns error when account not found", func(t *testing.T) {
 		// Setup
-		accountDID := testutil.RandomDID(t)
+		issuer := testutil.RandomSigner(t)
+		accountDID := issuer.DID()
 
 		mockSvc := &mockService{
 			getAccountEgressFunc: func(ctx context.Context, acctDID did.DID, spacesFilter []did.DID, periodFilter *service.Period) (*service.AccountEgress, error) {
@@ -232,7 +233,6 @@ func TestAccountEgressGetHandler(t *testing.T) {
 		require.NoError(t, err)
 
 		// Create invocation
-		issuer := testutil.RandomSigner(t)
 		inv, err := accountegress.Get.Invoke(
 			issuer,
 			serviceSigner,
@@ -265,7 +265,8 @@ func TestAccountEgressGetHandler(t *testing.T) {
 
 	t.Run("returns error when space unauthorized", func(t *testing.T) {
 		// Setup
-		accountDID := testutil.RandomDID(t)
+		issuer := testutil.RandomSigner(t)
+		accountDID := issuer.DID()
 		space1 := testutil.RandomDID(t)
 
 		mockSvc := &mockService{
@@ -279,7 +280,6 @@ func TestAccountEgressGetHandler(t *testing.T) {
 		require.NoError(t, err)
 
 		// Create invocation
-		issuer := testutil.RandomSigner(t)
 		inv, err := accountegress.Get.Invoke(
 			issuer,
 			serviceSigner,
@@ -312,7 +312,8 @@ func TestAccountEgressGetHandler(t *testing.T) {
 
 	t.Run("returns error when period not acceptable", func(t *testing.T) {
 		// Setup
-		accountDID := testutil.RandomDID(t)
+		issuer := testutil.RandomSigner(t)
+		accountDID := issuer.DID()
 		from := time.Date(2024, 1, 31, 0, 0, 0, 0, time.UTC)
 		to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 
@@ -327,7 +328,6 @@ func TestAccountEgressGetHandler(t *testing.T) {
 		require.NoError(t, err)
 
 		// Create invocation
-		issuer := testutil.RandomSigner(t)
 		inv, err := accountegress.Get.Invoke(
 			issuer,
 			serviceSigner,

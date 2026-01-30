@@ -130,8 +130,8 @@ func ucanAccountEgressGetHandler(svc service.Service) func(
 
 		// 4. Transform service result to GetOk format
 		spacesModel := accountegress.SpacesModel{
-			Keys:   make([]did.DID, 0, len(egressData.Spaces)),
-			Values: make(map[did.DID]accountegress.SpaceEgress, len(egressData.Spaces)),
+			Keys:   make([]string, 0, len(egressData.Spaces)),
+			Values: make(map[string]accountegress.SpaceEgress, len(egressData.Spaces)),
 		}
 
 		for spaceDID, spaceData := range egressData.Spaces {
@@ -143,8 +143,9 @@ func ucanAccountEgressGetHandler(svc service.Service) func(
 				}
 			}
 
-			spacesModel.Keys = append(spacesModel.Keys, spaceDID)
-			spacesModel.Values[spaceDID] = accountegress.SpaceEgress{
+			spaceDIDStr := spaceDID.String()
+			spacesModel.Keys = append(spacesModel.Keys, spaceDIDStr)
+			spacesModel.Values[spaceDIDStr] = accountegress.SpaceEgress{
 				Total:      spaceData.Total,
 				DailyStats: dailyStats,
 			}
