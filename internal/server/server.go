@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/storacha/go-ucanto/core/delegation"
 	"github.com/storacha/go-ucanto/principal"
 	ucanto "github.com/storacha/go-ucanto/server"
 	"github.com/storacha/go-ucanto/validator"
@@ -24,6 +25,7 @@ type config struct {
 	clientEgressUSDPerTiB   float64
 	providerEgressUSDPerTiB float64
 	principalResolver       validator.PrincipalResolver
+	authProofs              []delegation.Delegation
 }
 
 type Option func(*config)
@@ -54,14 +56,20 @@ func WithPrincipalResolver(resolver validator.PrincipalResolver) Option {
 	}
 }
 
+func WithAuthorityProofs(authProofs ...delegation.Delegation) Option {
+	return func(c *config) {
+		c.authProofs = authProofs
+	}
+}
+
 type Server struct {
 	cfg       *config
 	ucantoSrv ucanto.ServerView[ucanto.Service]
 	cons      *consolidator.Consolidator
-	svc       *service.Service
+	svc       service.Service
 }
 
-func New(id principal.Signer, svc *service.Service, cons *consolidator.Consolidator, opts ...Option) (*Server, error) {
+func New(id principal.Signer, svc service.Service, cons *consolidator.Consolidator, opts ...Option) (*Server, error) {
 	cfg := &config{}
 	for _, opt := range opts {
 		opt(cfg)
@@ -72,6 +80,8 @@ func New(id principal.Signer, svc *service.Service, cons *consolidator.Consolida
 	if cfg.principalResolver != nil {
 		ucantoOpts = append(ucantoOpts, ucanto.WithPrincipalResolver(cfg.principalResolver.ResolveDIDKey))
 	}
+
+	ucantoOpts = append(ucantoOpts, ucanto.WithAuthorityProofs(cfg.authProofs...))
 
 	ucantoSrv, err := ucanto.NewServer(id, ucantoOpts...)
 	if err != nil {

@@ -2,7 +2,10 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"net/url"
+	"slices"
+	"strings"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -24,7 +27,85 @@ import (
 
 var log = logging.Logger("service")
 
-type Service struct {
+type ErrAccountNotFound struct {
+	accountDID did.DID
+}
+
+func NewAccountNotFoundError(accountDID did.DID) ErrAccountNotFound {
+	return ErrAccountNotFound{accountDID: accountDID}
+}
+
+func (e ErrAccountNotFound) Error() string {
+	return fmt.Sprintf("customer account %s not found", e.accountDID)
+}
+
+type ErrPeriodNotAcceptable struct {
+	msg string
+}
+
+func NewPeriodNotAcceptableError(msg string) ErrPeriodNotAcceptable {
+	return ErrPeriodNotAcceptable{msg: msg}
+}
+
+func (e ErrPeriodNotAcceptable) Error() string {
+	return e.msg
+}
+
+type ErrSpaceUnauthorized struct {
+	unAuthSpaces []did.DID
+}
+
+func NewSpaceUnauthorizedError(unAuthSpaces []did.DID) ErrSpaceUnauthorized {
+	return ErrSpaceUnauthorized{unAuthSpaces: unAuthSpaces}
+}
+
+func (e ErrSpaceUnauthorized) Error() string {
+	switch {
+	case len(e.unAuthSpaces) == 1:
+		return fmt.Sprintf("space %s is not owned by account", e.unAuthSpaces[0])
+	case len(e.unAuthSpaces) > 5:
+		unAuthSpaces := make([]string, 0, 5) // Limit number of spaces in error message
+		for i := range 5 {
+			unAuthSpaces = append(unAuthSpaces, e.unAuthSpaces[i].String())
+		}
+		return fmt.Sprintf("spaces %s (and %d more) are not owned by account", strings.Join(unAuthSpaces, ", "), len(e.unAuthSpaces)-5)
+	default:
+		unAuthSpaces := make([]string, 0, len(e.unAuthSpaces))
+		for _, s := range e.unAuthSpaces {
+			unAuthSpaces = append(unAuthSpaces, s.String())
+		}
+		return fmt.Sprintf("spaces %s are not owned by account", strings.Join(unAuthSpaces, ","))
+	}
+}
+
+// SpaceEgress holds egress data for a single space
+type SpaceEgress struct {
+	Total      uint64
+	DailyStats []DailyStat
+}
+
+// DailyStat represents egress for a single day
+type DailyStat struct {
+	Date   time.Time
+	Egress uint64
+}
+
+// AccountEgress holds complete egress data for an account
+type AccountEgress struct {
+	Total  uint64
+	Spaces map[did.DID]SpaceEgress
+}
+
+// Service defines the interface for the egress tracking service
+type Service interface {
+	Record(ctx context.Context, node did.DID, receipts ucan.Link, endpoint *url.URL, cause invocation.Invocation) error
+	GetStats(ctx context.Context, node did.DID) (*Stats, error)
+	GetAllProvidersStats(ctx context.Context, limit int, startToken *string) (*GetAllProvidersStatsResult, error)
+	GetAllAccountsStats(ctx context.Context, limit int, startToken *string) (*GetAllAccountsStatsResult, error)
+	GetAccountEgress(ctx context.Context, accountDID did.DID, spacesFilter []did.DID, periodFilter *Period) (*AccountEgress, error)
+}
+
+type service struct {
 	id                   principal.Signer
 	environment          string
 	egressTable          egress.EgressTable
@@ -44,8 +125,8 @@ func New(
 	customerTable customer.CustomerTable,
 	consumerTable consumer.ConsumerTable,
 	spaceStatsTable spacestats.SpaceStatsTable,
-) (*Service, error) {
-	return &Service{
+) (*service, error) {
+	return &service{
 		id:                   id,
 		environment:          environment,
 		egressTable:          egressTable,
@@ -57,7 +138,7 @@ func New(
 	}, nil
 }
 
-func (s *Service) Record(ctx context.Context, node did.DID, receipts ucan.Link, endpoint *url.URL, cause invocation.Invocation) error {
+func (s *service) Record(ctx context.Context, node did.DID, receipts ucan.Link, endpoint *url.URL, cause invocation.Invocation) error {
 	if err := s.egressTable.Record(ctx, receipts, node, endpoint, cause); err != nil {
 		return err
 	}
@@ -68,7 +149,7 @@ func (s *Service) Record(ctx context.Context, node did.DID, receipts ucan.Link, 
 	return nil
 }
 
-func (s *Service) GetStats(ctx context.Context, node did.DID) (*Stats, error) {
+func (s *service) GetStats(ctx context.Context, node did.DID) (*Stats, error) {
 	stats := NewStats(time.Now().UTC())
 
 	// Get records from the beginning of previous month (earliest period we need)
@@ -95,7 +176,7 @@ type GetAllProvidersStatsResult struct {
 	NextToken *string
 }
 
-func (s *Service) GetAllProvidersStats(ctx context.Context, limit int, startToken *string) (*GetAllProvidersStatsResult, error) {
+func (s *service) GetAllProvidersStats(ctx context.Context, limit int, startToken *string) (*GetAllProvidersStatsResult, error) {
 	// Get providers with pagination
 	result, err := s.storageProviderTable.GetAll(ctx, limit, startToken)
 	if err != nil {
@@ -131,7 +212,7 @@ type GetAllAccountsStatsResult struct {
 	NextToken *string
 }
 
-func (s *Service) GetAllAccountsStats(ctx context.Context, limit int, startToken *string) (*GetAllAccountsStatsResult, error) {
+func (s *service) GetAllAccountsStats(ctx context.Context, limit int, startToken *string) (*GetAllAccountsStatsResult, error) {
 	// Get customers with pagination
 	result, err := s.customerTable.List(ctx, limit, startToken)
 	if err != nil {
@@ -157,7 +238,7 @@ func (s *Service) GetAllAccountsStats(ctx context.Context, limit int, startToken
 }
 
 // getAccountStats calculates aggregated stats for an account by fetching all spaces and their daily stats
-func (s *Service) getAccountStats(
+func (s *service) getAccountStats(
 	ctx context.Context,
 	customerID did.DID,
 ) (*Stats, error) {
@@ -171,8 +252,8 @@ func (s *Service) getAccountStats(
 
 	// Aggregate stats across all spaces
 	for _, space := range spaces {
-		// Fetch daily stats for this space from the beginning of previous month
-		dailyStats, err := s.spaceStatsTable.GetDailyStats(ctx, space, stats.Earliest())
+		// Fetch daily stats for this space from the beginning of previous month to now
+		dailyStats, err := s.spaceStatsTable.GetDailyStats(ctx, space, stats.Earliest(), time.Now().UTC())
 		if err != nil {
 			log.Error("failed to get daily stats for space", "space", space, "error", err)
 			continue
@@ -184,4 +265,120 @@ func (s *Service) getAccountStats(
 	}
 
 	return stats, err
+}
+
+const maxPeriodDays = 60
+
+// defaultPeriod returns a period from the first day of the last complete month to today
+func defaultPeriod() Period {
+	now := time.Now().UTC()
+
+	// Calculate first day of last complete month
+	firstOfThisMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+	firstOfLastMonth := firstOfThisMonth.AddDate(0, -1, 0)
+
+	return Period{
+		From: firstOfLastMonth,
+		To:   now,
+	}
+}
+
+// GetAccountEgress fetches egress data for an account with optional filters
+func (s *service) GetAccountEgress(
+	ctx context.Context,
+	accountDID did.DID,
+	spacesFilter []did.DID,
+	periodFilter *Period,
+) (*AccountEgress, error) {
+	// 1. Validate account exists
+	exists, err := s.customerTable.Has(ctx, accountDID)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, NewAccountNotFoundError(accountDID)
+	}
+
+	// 2. Determine which spaces to query
+	allSpaces, err := s.consumerTable.ListByCustomer(ctx, accountDID)
+	if err != nil {
+		return nil, err
+	}
+	spacesToQuery := allSpaces
+	if len(spacesFilter) != 0 {
+		// Validate requested spaces belong to account
+		unAuthSpaces := make([]did.DID, 0)
+		for _, s := range spacesFilter {
+			if !slices.Contains(allSpaces, s) {
+				unAuthSpaces = append(unAuthSpaces, s)
+			}
+		}
+		if len(unAuthSpaces) != 0 {
+			return nil, NewSpaceUnauthorizedError(unAuthSpaces)
+		}
+
+		spacesToQuery = spacesFilter
+	}
+
+	// 3. If no spaces, return success with zeros (as per requirement)
+	if len(spacesToQuery) == 0 {
+		return &AccountEgress{
+			Total:  0,
+			Spaces: make(map[did.DID]SpaceEgress),
+		}, nil
+	}
+
+	// 4. Determine query time range
+	// Default: first day of last complete month to today
+	period := defaultPeriod()
+	if periodFilter != nil {
+		from := time.Date(periodFilter.From.Year(), periodFilter.From.Month(), periodFilter.From.Day(), 0, 0, 0, 0, period.From.Location())
+		to := time.Date(periodFilter.To.Year(), periodFilter.To.Month(), periodFilter.To.Day(), 0, 0, 0, 0, period.To.Location())
+		if from.After(to) || from.Equal(to) {
+			return nil, NewPeriodNotAcceptableError(fmt.Sprintf("'from' date %s is after or same as 'to' date %s", from, to))
+		}
+
+		daysBetween := int(to.Sub(from).Hours() / 24)
+		if daysBetween > maxPeriodDays {
+			return nil, NewPeriodNotAcceptableError(fmt.Sprintf("requested period exceeds maximum of %d days", maxPeriodDays))
+		}
+
+		period = *periodFilter
+	}
+
+	// 5. Fetch and aggregate stats for each space
+	var totalEgress uint64
+	spacesData := make(map[did.DID]SpaceEgress, len(spacesToQuery))
+
+	for _, spaceDID := range spacesToQuery {
+		dailyStatsDB, err := s.spaceStatsTable.GetDailyStats(ctx, spaceDID, period.From, period.To)
+		if err != nil {
+			log.Errorf("failed to get daily stats for space %s: %v", spaceDID, err)
+			continue // Skip space but continue with others
+		}
+
+		// No need to filter - DB query already filtered by BETWEEN
+		var spaceTotal uint64
+		dailyStats := make([]DailyStat, 0, len(dailyStatsDB))
+
+		for _, dbStat := range dailyStatsDB {
+			spaceTotal += dbStat.Egress
+			dailyStats = append(dailyStats, DailyStat{
+				Date:   dbStat.Date,
+				Egress: dbStat.Egress,
+			})
+		}
+
+		// Include space even if it has no data - shows space exists but has zero egress
+		spacesData[spaceDID] = SpaceEgress{
+			Total:      spaceTotal,
+			DailyStats: dailyStats,
+		}
+		totalEgress += spaceTotal
+	}
+
+	return &AccountEgress{
+		Total:  totalEgress,
+		Spaces: spacesData,
+	}, nil
 }

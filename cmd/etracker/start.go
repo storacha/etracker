@@ -11,9 +11,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	ucancap "github.com/storacha/go-libstoracha/capabilities/ucan"
+	"github.com/storacha/go-ucanto/core/delegation"
 	"github.com/storacha/go-ucanto/did"
 	ed25519 "github.com/storacha/go-ucanto/principal/ed25519/signer"
 	"github.com/storacha/go-ucanto/principal/signer"
+	"github.com/storacha/go-ucanto/ucan"
 
 	"github.com/storacha/etracker/internal/config"
 	"github.com/storacha/etracker/internal/consolidator"
@@ -213,6 +216,33 @@ func startService(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("creating principal resolver: %w", err)
 	}
 
+	// Trust attestations from trusted authorities
+	var authProofs []delegation.Delegation
+	for _, authority := range cfg.TrustedAuthorities {
+		auth, err := did.Parse(authority)
+		if err != nil {
+			return fmt.Errorf("parsing trusted authority: %w", err)
+		}
+
+		attestDlg, err := delegation.Delegate(
+			id,
+			auth,
+			[]ucan.Capability[ucan.NoCaveats]{
+				ucan.NewCapability(
+					ucancap.AttestAbility,
+					id.DID().String(),
+					ucan.NoCaveats{},
+				),
+			},
+			delegation.WithNoExpiration(),
+		)
+		if err != nil {
+			return err
+		}
+
+		authProofs = append(authProofs, attestDlg)
+	}
+
 	// Create and start consolidator
 	interval := time.Duration(cfg.ConsolidationInterval) * time.Second
 	batchSize := cfg.ConsolidationBatchSize
@@ -228,7 +258,7 @@ func startService(cmd *cobra.Command, args []string) error {
 		interval,
 		batchSize,
 		presolver.ResolveDIDKey,
-		cfg.TrustedAuthorities,
+		authProofs,
 	)
 	if err != nil {
 		return fmt.Errorf("creating consolidator: %w", err)
@@ -246,6 +276,7 @@ func startService(cmd *cobra.Command, args []string) error {
 		server.WithAdminCreds(cfg.AdminDashboardUser, cfg.AdminDashboardPassword),
 		server.WithPricing(cfg.ClientEgressUSDPerTiB, cfg.ProviderEgressUSDPerTiB),
 		server.WithPrincipalResolver(presolver),
+		server.WithAuthorityProofs(authProofs...),
 	)
 	if err != nil {
 		return fmt.Errorf("creating server: %w", err)

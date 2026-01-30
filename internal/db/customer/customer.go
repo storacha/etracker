@@ -16,4 +16,5 @@ type ListResult struct {
 
 type CustomerTable interface {
 	List(ctx context.Context, limit int, cursor *string) (*ListResult, error)
+	Has(ctx context.Context, customerDID did.DID) (bool, error)
 }

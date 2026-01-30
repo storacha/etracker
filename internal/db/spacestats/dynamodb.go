@@ -47,25 +47,27 @@ func (d *DynamoSpaceStatsTable) Record(ctx context.Context, space did.DID, egres
 	return nil
 }
 
-func (d *DynamoSpaceStatsTable) GetDailyStats(ctx context.Context, space did.DID, since time.Time) ([]DailyStats, error) {
+func (d *DynamoSpaceStatsTable) GetDailyStats(ctx context.Context, space did.DID, from time.Time, to time.Time) ([]DailyStats, error) {
 	stats := make([]DailyStats, 0)
 	var exclusiveStartKey map[string]types.AttributeValue
 
-	// Format since date to YYYY-MM-DD for comparison
-	sinceDate := since.UTC().Format("2006-01-02")
+	// Format dates to YYYY-MM-DD for comparison
+	fromDate := from.UTC().Format("2006-01-02")
+	toDate := to.UTC().Format("2006-01-02")
 
 	// Keep querying until we get all results (handle pagination)
 	for {
 		input := &dynamodb.QueryInput{
 			TableName:              aws.String(d.tableName),
-			KeyConditionExpression: aws.String("#space = :space AND #date >= :since"),
+			KeyConditionExpression: aws.String("#space = :space AND #date BETWEEN :from AND :to"),
 			ExpressionAttributeNames: map[string]string{
 				"#space": "space",
 				"#date":  "date",
 			},
 			ExpressionAttributeValues: map[string]types.AttributeValue{
 				":space": &types.AttributeValueMemberS{Value: space.String()},
-				":since": &types.AttributeValueMemberS{Value: sinceDate},
+				":from":  &types.AttributeValueMemberS{Value: fromDate},
+				":to":    &types.AttributeValueMemberS{Value: toDate},
 			},
 			ProjectionExpression: aws.String("#date, egress"),
 		}
