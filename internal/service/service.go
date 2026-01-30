@@ -96,7 +96,16 @@ type AccountEgress struct {
 	Spaces map[did.DID]SpaceEgress
 }
 
-type Service struct {
+// Service defines the interface for the egress tracking service
+type Service interface {
+	Record(ctx context.Context, node did.DID, receipts ucan.Link, endpoint *url.URL, cause invocation.Invocation) error
+	GetStats(ctx context.Context, node did.DID) (*Stats, error)
+	GetAllProvidersStats(ctx context.Context, limit int, startToken *string) (*GetAllProvidersStatsResult, error)
+	GetAllAccountsStats(ctx context.Context, limit int, startToken *string) (*GetAllAccountsStatsResult, error)
+	GetAccountEgress(ctx context.Context, accountDID did.DID, spacesFilter []did.DID, periodFilter *Period) (*AccountEgress, error)
+}
+
+type service struct {
 	id                   principal.Signer
 	environment          string
 	egressTable          egress.EgressTable
@@ -116,8 +125,8 @@ func New(
 	customerTable customer.CustomerTable,
 	consumerTable consumer.ConsumerTable,
 	spaceStatsTable spacestats.SpaceStatsTable,
-) (*Service, error) {
-	return &Service{
+) (*service, error) {
+	return &service{
 		id:                   id,
 		environment:          environment,
 		egressTable:          egressTable,
@@ -129,7 +138,7 @@ func New(
 	}, nil
 }
 
-func (s *Service) Record(ctx context.Context, node did.DID, receipts ucan.Link, endpoint *url.URL, cause invocation.Invocation) error {
+func (s *service) Record(ctx context.Context, node did.DID, receipts ucan.Link, endpoint *url.URL, cause invocation.Invocation) error {
 	if err := s.egressTable.Record(ctx, receipts, node, endpoint, cause); err != nil {
 		return err
 	}
@@ -140,7 +149,7 @@ func (s *Service) Record(ctx context.Context, node did.DID, receipts ucan.Link, 
 	return nil
 }
 
-func (s *Service) GetStats(ctx context.Context, node did.DID) (*Stats, error) {
+func (s *service) GetStats(ctx context.Context, node did.DID) (*Stats, error) {
 	stats := NewStats(time.Now().UTC())
 
 	// Get records from the beginning of previous month (earliest period we need)
@@ -167,7 +176,7 @@ type GetAllProvidersStatsResult struct {
 	NextToken *string
 }
 
-func (s *Service) GetAllProvidersStats(ctx context.Context, limit int, startToken *string) (*GetAllProvidersStatsResult, error) {
+func (s *service) GetAllProvidersStats(ctx context.Context, limit int, startToken *string) (*GetAllProvidersStatsResult, error) {
 	// Get providers with pagination
 	result, err := s.storageProviderTable.GetAll(ctx, limit, startToken)
 	if err != nil {
@@ -203,7 +212,7 @@ type GetAllAccountsStatsResult struct {
 	NextToken *string
 }
 
-func (s *Service) GetAllAccountsStats(ctx context.Context, limit int, startToken *string) (*GetAllAccountsStatsResult, error) {
+func (s *service) GetAllAccountsStats(ctx context.Context, limit int, startToken *string) (*GetAllAccountsStatsResult, error) {
 	// Get customers with pagination
 	result, err := s.customerTable.List(ctx, limit, startToken)
 	if err != nil {
@@ -229,7 +238,7 @@ func (s *Service) GetAllAccountsStats(ctx context.Context, limit int, startToken
 }
 
 // getAccountStats calculates aggregated stats for an account by fetching all spaces and their daily stats
-func (s *Service) getAccountStats(
+func (s *service) getAccountStats(
 	ctx context.Context,
 	customerID did.DID,
 ) (*Stats, error) {
@@ -275,7 +284,7 @@ func defaultPeriod() Period {
 }
 
 // GetAccountEgress fetches egress data for an account with optional filters
-func (s *Service) GetAccountEgress(
+func (s *service) GetAccountEgress(
 	ctx context.Context,
 	accountDID did.DID,
 	spacesFilter []did.DID,

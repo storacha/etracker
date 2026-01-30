@@ -66,10 +66,10 @@ type Server struct {
 	cfg       *config
 	ucantoSrv ucanto.ServerView[ucanto.Service]
 	cons      *consolidator.Consolidator
-	svc       *service.Service
+	svc       service.Service
 }
 
-func New(id principal.Signer, svc *service.Service, cons *consolidator.Consolidator, opts ...Option) (*Server, error) {
+func New(id principal.Signer, svc service.Service, cons *consolidator.Consolidator, opts ...Option) (*Server, error) {
 	cfg := &config{}
 	for _, opt := range opts {
 		opt(cfg)

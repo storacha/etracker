@@ -17,7 +17,7 @@ import (
 	"github.com/storacha/etracker/internal/service"
 )
 
-func serviceMethods(svc *service.Service) []userver.Option {
+func serviceMethods(svc service.Service) []userver.Option {
 	return []userver.Option{
 		userver.WithServiceMethod(
 			egress.TrackAbility,
@@ -30,7 +30,7 @@ func serviceMethods(svc *service.Service) []userver.Option {
 	}
 }
 
-func ucanTrackHandler(svc *service.Service) func(
+func ucanTrackHandler(svc service.Service) func(
 	ctx context.Context,
 	cap ucan.Capability[egress.TrackCaveats],
 	inv invocation.Invocation,
@@ -71,7 +71,7 @@ func ucanTrackHandler(svc *service.Service) func(
 	}
 }
 
-func ucanAccountEgressGetHandler(svc *service.Service) func(
+func ucanAccountEgressGetHandler(svc service.Service) func(
 	ctx context.Context,
 	cap ucan.Capability[accountegress.GetCaveats],
 	inv invocation.Invocation,
