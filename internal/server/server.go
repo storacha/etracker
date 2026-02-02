@@ -25,6 +25,7 @@ type config struct {
 	clientEgressUSDPerTiB   float64
 	providerEgressUSDPerTiB float64
 	principalResolver       validator.PrincipalResolver
+	principalParser         validator.PrincipalParserFunc
 	authProofs              []delegation.Delegation
 }
 
@@ -56,6 +57,12 @@ func WithPrincipalResolver(resolver validator.PrincipalResolver) Option {
 	}
 }
 
+func WithPrincipalParser(parser validator.PrincipalParserFunc) Option {
+	return func(c *config) {
+		c.principalParser = parser
+	}
+}
+
 func WithAuthorityProofs(authProofs ...delegation.Delegation) Option {
 	return func(c *config) {
 		c.authProofs = authProofs
@@ -79,6 +86,10 @@ func New(id principal.Signer, svc service.Service, cons *consolidator.Consolidat
 
 	if cfg.principalResolver != nil {
 		ucantoOpts = append(ucantoOpts, ucanto.WithPrincipalResolver(cfg.principalResolver.ResolveDIDKey))
+	}
+
+	if cfg.principalParser != nil {
+		ucantoOpts = append(ucantoOpts, ucanto.WithPrincipalParser(cfg.principalParser))
 	}
 
 	ucantoOpts = append(ucantoOpts, ucanto.WithAuthorityProofs(cfg.authProofs...))
@@ -113,6 +124,28 @@ func (s *Server) ListenAndServe(addr string) error {
 		log.Warnf("Metrics endpoint is disabled")
 	}
 
+	// Wrap with CORS middleware
+	corsHandler := corsMiddleware(mux)
+
 	log.Infof("Listening on %s", addr)
-	return http.ListenAndServe(addr, mux)
+	return http.ListenAndServe(addr, corsHandler)
+}
+
+// corsMiddleware adds CORS headers to allow cross-origin requests
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Allow all origins
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "*")
+		w.Header().Set("Access-Control-Max-Age", "86400") // 24 hours
+
+		// Handle preflight requests
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }

@@ -14,7 +14,10 @@ import (
 	ucancap "github.com/storacha/go-libstoracha/capabilities/ucan"
 	"github.com/storacha/go-ucanto/core/delegation"
 	"github.com/storacha/go-ucanto/did"
+	"github.com/storacha/go-ucanto/principal"
 	ed25519 "github.com/storacha/go-ucanto/principal/ed25519/signer"
+	ed25519verifier "github.com/storacha/go-ucanto/principal/ed25519/verifier"
+	rsaverifier "github.com/storacha/go-ucanto/principal/rsa/verifier"
 	"github.com/storacha/go-ucanto/principal/signer"
 	"github.com/storacha/go-ucanto/ucan"
 
@@ -267,6 +270,21 @@ func startService(cmd *cobra.Command, args []string) error {
 	// Start consolidator in a goroutine
 	go cons.Start(ctx)
 
+	// Multi-format principal parser that supports both Ed25519 and RSA keys
+	parsePrincipal := func(str string) (principal.Verifier, error) {
+		// Try Ed25519 first
+		vf, err := ed25519verifier.Parse(str)
+		if err == nil {
+			return vf, nil
+		}
+		// Try RSA if Ed25519 fails
+		vf, err = rsaverifier.Parse(str)
+		if err == nil {
+			return vf, nil
+		}
+		return nil, fmt.Errorf("failed to parse principal as Ed25519 or RSA: %s", str)
+	}
+
 	// Create server
 	server, err := server.New(
 		id,
@@ -276,6 +294,7 @@ func startService(cmd *cobra.Command, args []string) error {
 		server.WithAdminCreds(cfg.AdminDashboardUser, cfg.AdminDashboardPassword),
 		server.WithPricing(cfg.ClientEgressUSDPerTiB, cfg.ProviderEgressUSDPerTiB),
 		server.WithPrincipalResolver(presolver),
+		server.WithPrincipalParser(parsePrincipal),
 		server.WithAuthorityProofs(authProofs...),
 	)
 	if err != nil {
