@@ -18,6 +18,9 @@ var (
 
 	// ConsolidatedBytesPerNode counts the consolidated bytes per node
 	ConsolidatedBytesPerNode metric.Int64Counter
+
+	// UnprocessedBatches keeps track of the total number of batches pending consolidation
+	UnprocessedBatches metric.Int64UpDownCounter
 )
 
 // Init initializes the OpenTelemetry metrics with Prometheus exporter
@@ -51,6 +54,14 @@ func Init() error {
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create ConsolidatedBytesPerNode counter: %w", err)
+	}
+
+	UnprocessedBatches, err = meter.Int64UpDownCounter(
+		"etracker_unprocessed_batches_total",
+		metric.WithDescription("Total number of unprocessed batches"),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create UnprocessedBatches counter: %w", err)
 	}
 
 	log.Info("OpenTelemetry metrics initialized with Prometheus exporter")
