@@ -145,6 +145,9 @@ func (c *Consolidator) Stop() {
 func (c *Consolidator) Consolidate(ctx context.Context) error {
 	log.Info("Starting consolidation cycle")
 
+	// Environment attribute for metrics
+	envAttr := attribute.String("env", c.environment)
+
 	// Get unprocessed records
 	records, err := c.egressTable.GetUnprocessed(ctx, c.batchSize)
 	if err != nil {
@@ -222,8 +225,8 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 		}
 
 		// Increment consolidated bytes counter for this node
-		attributes := attribute.NewSet(attribute.String("node", record.Node.String()), attribute.String("env", c.environment))
-		metrics.ConsolidatedBytesPerNode.Add(ctx, int64(totalEgress), metric.WithAttributeSet(attributes))
+		nodeAttr := attribute.String("node", record.Node.String())
+		metrics.ConsolidatedBytesPerNode.Add(ctx, int64(totalEgress), metric.WithAttributeSet(attribute.NewSet(nodeAttr, envAttr)))
 
 		bLog.Infof("Consolidated %d bytes", totalEgress)
 	}
@@ -232,6 +235,8 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 	if err := c.egressTable.MarkAsProcessed(ctx, records); err != nil {
 		return fmt.Errorf("marking records as processed: %w", err)
 	}
+
+	metrics.UnprocessedBatches.Add(ctx, int64(-len(records)), metric.WithAttributeSet(attribute.NewSet(envAttr)))
 
 	log.Infof("Consolidation cycle completed. Processed %d records", len(records))
 

@@ -29,9 +29,12 @@ import (
 	"github.com/storacha/etracker/internal/db/egress"
 	"github.com/storacha/etracker/internal/db/spacestats"
 	"github.com/storacha/etracker/internal/db/storageproviders"
+	"github.com/storacha/etracker/internal/metrics"
 	"github.com/storacha/etracker/internal/presets"
 	"github.com/storacha/etracker/internal/server"
 	"github.com/storacha/etracker/internal/service"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 )
 
 var startCmd = &cobra.Command{
@@ -197,6 +200,23 @@ func startService(cmd *cobra.Command, args []string) error {
 	consumerCfg := cfg.AWSConfig.Copy()
 	consumerCfg.Region = cfg.ConsumerTableRegion
 	consumerTable := consumer.NewDynamoConsumerTable(dynamodb.NewFromConfig(consumerCfg), cfg.ConsumerTableName, cfg.ConsumerConsumerIndexName, cfg.ConsumerCustomerIndexName)
+
+	// Initialize metrics if metrics are configured
+	if cfg.MetricsAuthToken != "" {
+		if err := metrics.Init(); err != nil {
+			return fmt.Errorf("initializing metrics: %w", err)
+		}
+
+		// Reconcile UnprocessedBatches metric with actual database count
+		count, err := egressTable.CountUnprocessedBatches(ctx)
+		if err != nil {
+			log.Warnf("failed to reconcile unprocessed batches count: %v", err)
+		} else {
+			envAttr := attribute.String("env", env)
+			metrics.UnprocessedBatches.Add(ctx, count, metric.WithAttributeSet(attribute.NewSet(envAttr)))
+			log.Infof("reconciled unprocessed batches count: %d", count)
+		}
+	}
 
 	// Create service
 	svc, err := service.New(

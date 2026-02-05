@@ -143,8 +143,10 @@ func (s *service) Record(ctx context.Context, node did.DID, receipts ucan.Link, 
 		return err
 	}
 
-	attributes := attribute.NewSet(attribute.String("node", node.String()), attribute.String("env", s.environment))
-	metrics.TrackedBatchesPerNode.Add(ctx, 1, metric.WithAttributeSet(attributes))
+	nodeAttr := attribute.String("node", node.String())
+	envAttr := attribute.String("env", s.environment)
+	metrics.TrackedBatchesPerNode.Add(ctx, 1, metric.WithAttributeSet(attribute.NewSet(nodeAttr, envAttr)))
+	metrics.UnprocessedBatches.Add(ctx, 1, metric.WithAttributeSet(attribute.NewSet(envAttr)))
 
 	return nil
 }

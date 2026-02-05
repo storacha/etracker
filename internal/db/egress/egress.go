@@ -22,4 +22,5 @@ type EgressTable interface {
 	Record(ctx context.Context, batch ucan.Link, node did.DID, endpoint *url.URL, cause invocation.Invocation) error
 	GetUnprocessed(ctx context.Context, limit int) ([]EgressRecord, error)
 	MarkAsProcessed(ctx context.Context, records []EgressRecord) error
+	CountUnprocessedBatches(ctx context.Context) (int64, error)
 }

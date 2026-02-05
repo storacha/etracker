@@ -95,6 +95,37 @@ func (d *DynamoEgressTable) MarkAsProcessed(ctx context.Context, records []Egres
 	return nil
 }
 
+func (d *DynamoEgressTable) CountUnprocessedBatches(ctx context.Context) (int64, error) {
+	var totalCount int64
+	var lastEvaluatedKey map[string]types.AttributeValue
+
+	for {
+		input := &dynamodb.ScanInput{
+			TableName: aws.String(d.tableName),
+			IndexName: aws.String(d.unprocessedIndexName),
+			Select:    types.SelectCount, // Only count, don't fetch data
+		}
+
+		if lastEvaluatedKey != nil {
+			input.ExclusiveStartKey = lastEvaluatedKey
+		}
+
+		result, err := d.client.Scan(ctx, input)
+		if err != nil {
+			return 0, fmt.Errorf("scanning unprocessed batches count: %w", err)
+		}
+
+		totalCount += int64(result.Count)
+
+		if result.LastEvaluatedKey == nil {
+			break // No more pages
+		}
+		lastEvaluatedKey = result.LastEvaluatedKey
+	}
+
+	return totalCount, nil
+}
+
 type egressRecord struct {
 	Batch            string    `dynamodbav:"batch"`
 	Node             string    `dynamodbav:"node"`
