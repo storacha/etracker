@@ -13,6 +13,8 @@ var principalMapping = map[string]string{
 	"did:web:staging.registrar.warm.storacha.network": "did:key:z6MkuQ8PfSMrzXCwZkbQv662nZC4FGGm1aucbH256HXXZyxo",
 	"did:web:indexer.forge.storacha.network":          "did:key:z6Mkj8WmJQRy5jEnFN97uuc2qsjFdsYCuD5wE384Z1AMCFN7",
 	"did:web:staging.indexer.warm.storacha.network":   "did:key:z6Mkr4QkdinnXQmJ9JdnzwhcEjR8nMnuVPEwREyh9jp2Pb7k",
+	"did:web:up.forge.storacha.network":               "did:key:z6MkgSttS3n3R56yGX2Eufvbwc58fphomhAsLoBCZpZJzQbr",
+	"did:web:staging.up.warm.storacha.network":        "did:key:z6MkpR58oZpK7L3cdZZciKT25ynGro7RZm6boFouWQ7AzF7v",
 }
 
 type resolver struct {
