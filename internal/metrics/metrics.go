@@ -10,7 +10,6 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
-	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 )
 
 var log = logging.Logger("metrics")
@@ -37,10 +36,7 @@ func Init(environment string) error {
 	}
 
 	// Create a resource with the environment attribute
-	res := resource.NewWithAttributes(
-		semconv.SchemaURL,
-		attribute.String("env", environment),
-	)
+	res := resource.NewSchemaless(attribute.String("env", environment))
 
 	// Create a MeterProvider with the Prometheus exporter and resource
 	provider := sdkmetric.NewMeterProvider(
