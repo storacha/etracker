@@ -30,13 +30,18 @@ var (
 
 // Init initializes the OpenTelemetry metrics with Prometheus exporter
 func Init(environment string) error {
-	exporter, err := prometheus.New()
+	// Create a resource with the environment attribute
+	res := resource.NewSchemaless(attribute.String("env", environment))
+
+	// Configure Prometheus exporter to include resource attributes as metric labels, it doesn't do it by default
+	exporter, err := prometheus.New(
+		prometheus.WithResourceAsConstantLabels(
+			attribute.NewAllowKeysFilter("env"), // Only include "env" as a label
+		),
+	)
 	if err != nil {
 		return fmt.Errorf("failed to create prometheus exporter: %w", err)
 	}
-
-	// Create a resource with the environment attribute
-	res := resource.NewSchemaless(attribute.String("env", environment))
 
 	// Create a MeterProvider with the Prometheus exporter and resource
 	provider := sdkmetric.NewMeterProvider(
