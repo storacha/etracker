@@ -32,7 +32,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file path")
-	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "Error", "logging level")
+	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info", "logging level")
 
 	rootCmd.PersistentFlags().String("key-file", "", "Path to a PEM file containing ed25519 private key")
 	cobra.CheckErr(rootCmd.MarkPersistentFlagFilename("key-file", "pem"))
