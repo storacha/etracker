@@ -21,6 +21,9 @@ var (
 
 	// UnprocessedBatches keeps track of the total number of batches pending consolidation
 	UnprocessedBatches metric.Int64UpDownCounter
+
+	// ConsolidationRunDuration tracks the time (in milliseconds) each consolidation run takes to process all batches
+	ConsolidationRunDuration metric.Int64Histogram
 )
 
 // Init initializes the OpenTelemetry metrics with Prometheus exporter
@@ -62,6 +65,14 @@ func Init() error {
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create UnprocessedBatches counter: %w", err)
+	}
+
+	ConsolidationRunDuration, err = meter.Int64Histogram(
+		"etracker_consolidation_run_duration_ms",
+		metric.WithDescription("Time in milliseconds for each consolidation run to process all batches"),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create ConsolidationRunDuration histogram: %w", err)
 	}
 
 	log.Info("OpenTelemetry metrics initialized with Prometheus exporter")

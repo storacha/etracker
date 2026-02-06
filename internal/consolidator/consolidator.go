@@ -148,6 +148,13 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 	// Environment attribute for metrics
 	envAttr := attribute.String("env", c.environment)
 
+	// Track consolidation run duration
+	startTime := time.Now()
+	defer func() {
+		durationMs := time.Since(startTime).Milliseconds()
+		metrics.ConsolidationRunDuration.Record(ctx, durationMs, metric.WithAttributeSet(attribute.NewSet(envAttr)))
+	}()
+
 	// Get unprocessed records
 	records, err := c.egressTable.GetUnprocessed(ctx, c.batchSize)
 	if err != nil {
