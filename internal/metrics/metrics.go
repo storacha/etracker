@@ -5,9 +5,12 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/metric"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/resource"
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 )
 
 var log = logging.Logger("metrics")
@@ -27,14 +30,23 @@ var (
 )
 
 // Init initializes the OpenTelemetry metrics with Prometheus exporter
-func Init() error {
+func Init(environment string) error {
 	exporter, err := prometheus.New()
 	if err != nil {
 		return fmt.Errorf("failed to create prometheus exporter: %w", err)
 	}
 
-	// Create a MeterProvider with the Prometheus exporter
-	provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(exporter))
+	// Create a resource with the environment attribute
+	res := resource.NewWithAttributes(
+		semconv.SchemaURL,
+		attribute.String("env", environment),
+	)
+
+	// Create a MeterProvider with the Prometheus exporter and resource
+	provider := sdkmetric.NewMeterProvider(
+		sdkmetric.WithReader(exporter),
+		sdkmetric.WithResource(res),
+	)
 
 	// Set the global MeterProvider
 	otel.SetMeterProvider(provider)

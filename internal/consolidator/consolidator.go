@@ -45,7 +45,6 @@ var ErrNotFound = consolidated.ErrNotFound
 
 type Consolidator struct {
 	id                    principal.Signer
-	environment           string
 	egressTable           egress.EgressTable
 	consolidatedTable     consolidated.ConsolidatedTable
 	spaceStatsTable       spacestats.SpaceStatsTable
@@ -61,7 +60,6 @@ type Consolidator struct {
 
 func New(
 	id principal.Signer,
-	environment string,
 	egressTable egress.EgressTable,
 	consolidatedTable consolidated.ConsolidatedTable,
 	spaceStatsTable spacestats.SpaceStatsTable,
@@ -91,7 +89,6 @@ func New(
 
 	c := &Consolidator{
 		id:                    id,
-		environment:           environment,
 		egressTable:           egressTable,
 		consolidatedTable:     consolidatedTable,
 		spaceStatsTable:       spaceStatsTable,
@@ -145,14 +142,11 @@ func (c *Consolidator) Stop() {
 func (c *Consolidator) Consolidate(ctx context.Context) error {
 	log.Info("Starting consolidation cycle")
 
-	// Environment attribute for metrics
-	envAttr := attribute.String("env", c.environment)
-
 	// Track consolidation run duration
 	startTime := time.Now()
 	defer func() {
 		durationMs := time.Since(startTime).Milliseconds()
-		metrics.ConsolidationRunDuration.Record(ctx, durationMs, metric.WithAttributeSet(attribute.NewSet(envAttr)))
+		metrics.ConsolidationRunDuration.Record(ctx, durationMs)
 	}()
 
 	// Get unprocessed records
@@ -233,7 +227,7 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 
 		// Increment consolidated bytes counter for this node
 		nodeAttr := attribute.String("node", record.Node.String())
-		metrics.ConsolidatedBytesPerNode.Add(ctx, int64(totalEgress), metric.WithAttributeSet(attribute.NewSet(nodeAttr, envAttr)))
+		metrics.ConsolidatedBytesPerNode.Add(ctx, int64(totalEgress), metric.WithAttributeSet(attribute.NewSet(nodeAttr)))
 
 		bLog.Infof("Consolidated %d bytes", totalEgress)
 	}
@@ -243,7 +237,7 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 		return fmt.Errorf("marking records as processed: %w", err)
 	}
 
-	metrics.UnprocessedBatches.Add(ctx, int64(-len(records)), metric.WithAttributeSet(attribute.NewSet(envAttr)))
+	metrics.UnprocessedBatches.Add(ctx, int64(-len(records)))
 
 	log.Infof("Consolidation cycle completed. Processed %d records", len(records))
 

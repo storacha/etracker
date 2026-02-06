@@ -107,7 +107,6 @@ type Service interface {
 
 type service struct {
 	id                   principal.Signer
-	environment          string
 	egressTable          egress.EgressTable
 	consolidatedTable    consolidated.ConsolidatedTable
 	storageProviderTable storageproviders.StorageProviderTable
@@ -118,7 +117,6 @@ type service struct {
 
 func New(
 	id principal.Signer,
-	environment string,
 	egressTable egress.EgressTable,
 	consolidatedTable consolidated.ConsolidatedTable,
 	storageProviderTable storageproviders.StorageProviderTable,
@@ -128,7 +126,6 @@ func New(
 ) (*service, error) {
 	return &service{
 		id:                   id,
-		environment:          environment,
 		egressTable:          egressTable,
 		consolidatedTable:    consolidatedTable,
 		storageProviderTable: storageProviderTable,
@@ -144,9 +141,8 @@ func (s *service) Record(ctx context.Context, node did.DID, receipts ucan.Link, 
 	}
 
 	nodeAttr := attribute.String("node", node.String())
-	envAttr := attribute.String("env", s.environment)
-	metrics.TrackedBatchesPerNode.Add(ctx, 1, metric.WithAttributeSet(attribute.NewSet(nodeAttr, envAttr)))
-	metrics.UnprocessedBatches.Add(ctx, 1, metric.WithAttributeSet(attribute.NewSet(envAttr)))
+	metrics.TrackedBatchesPerNode.Add(ctx, 1, metric.WithAttributeSet(attribute.NewSet(nodeAttr)))
+	metrics.UnprocessedBatches.Add(ctx, 1)
 
 	return nil
 }
