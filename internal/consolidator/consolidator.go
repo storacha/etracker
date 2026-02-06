@@ -163,6 +163,7 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 	log.Infof("Processing %d unprocessed records", len(records))
 
 	// Process each record (each record represents a batch of receipts for a single node)
+	successfulRecords := make([]egress.EgressRecord, 0, len(records))
 	for _, record := range records {
 		var rcpt capegress.ConsolidateReceipt
 		totalEgress := uint64(0)
@@ -204,6 +205,8 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 
 		rcpt, err = c.execConsolidateInvocation(ctx, consolidateInv)
 		if err != nil {
+			bLog.Errorf("executing consolidation invocation: %v", err)
+
 			rcpt, err = c.issueErrorReceipt(consolidateInv, capegress.NewConsolidateError(err.Error()))
 			if err != nil {
 				bLog.Errorf("issuing error receipt: %v", err)
@@ -214,7 +217,7 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 		o, x := result.Unwrap(rcpt.Out())
 		var emptyErr capegress.ConsolidateError
 		if x != emptyErr {
-			bLog.Errorf("invocation failed: %s", x.Message)
+			bLog.Errorf("consolidation error: %s", x.Message)
 		} else {
 			totalEgress = o.TotalEgress
 		}
@@ -225,6 +228,8 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 			continue
 		}
 
+		successfulRecords = append(successfulRecords, record)
+
 		// Increment consolidated bytes counter for this node
 		nodeAttr := attribute.String("node", record.Node.String())
 		metrics.ConsolidatedBytesPerNode.Add(ctx, int64(totalEgress), metric.WithAttributeSet(attribute.NewSet(nodeAttr)))
@@ -233,13 +238,13 @@ func (c *Consolidator) Consolidate(ctx context.Context) error {
 	}
 
 	// Mark records as processed
-	if err := c.egressTable.MarkAsProcessed(ctx, records); err != nil {
+	if err := c.egressTable.MarkAsProcessed(ctx, successfulRecords); err != nil {
 		return fmt.Errorf("marking records as processed: %w", err)
 	}
 
-	metrics.UnprocessedBatches.Add(ctx, int64(-len(records)))
+	metrics.UnprocessedBatches.Add(ctx, int64(-len(successfulRecords)))
 
-	log.Infof("Consolidation cycle completed. Processed %d records", len(records))
+	log.Infof("Consolidation cycle completed. Processed %d records (%d successful)", len(records), len(successfulRecords))
 
 	return nil
 }
