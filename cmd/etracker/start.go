@@ -33,8 +33,6 @@ import (
 	"github.com/storacha/etracker/internal/presets"
 	"github.com/storacha/etracker/internal/server"
 	"github.com/storacha/etracker/internal/service"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric"
 )
 
 var startCmd = &cobra.Command{
@@ -179,8 +177,6 @@ func startService(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	env := cfg.MetricsEnvironment
-
 	// Create DynamoDB client
 	dynamoClient := dynamodb.NewFromConfig(cfg.AWSConfig)
 
@@ -203,7 +199,7 @@ func startService(cmd *cobra.Command, args []string) error {
 
 	// Initialize metrics if metrics are configured
 	if cfg.MetricsAuthToken != "" {
-		if err := metrics.Init(); err != nil {
+		if err := metrics.Init(cfg.MetricsEnvironment); err != nil {
 			return fmt.Errorf("initializing metrics: %w", err)
 		}
 
@@ -212,8 +208,7 @@ func startService(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			log.Warnf("failed to reconcile unprocessed batches count: %v", err)
 		} else {
-			envAttr := attribute.String("env", env)
-			metrics.UnprocessedBatches.Add(ctx, count, metric.WithAttributeSet(attribute.NewSet(envAttr)))
+			metrics.UnprocessedBatches.Add(ctx, count)
 			log.Infof("reconciled unprocessed batches count: %d", count)
 		}
 	}
@@ -221,7 +216,6 @@ func startService(cmd *cobra.Command, args []string) error {
 	// Create service
 	svc, err := service.New(
 		id,
-		env,
 		egressTable,
 		consolidatedTable,
 		storageProviderTable,
@@ -272,7 +266,6 @@ func startService(cmd *cobra.Command, args []string) error {
 
 	cons, err := consolidator.New(
 		id,
-		env,
 		egressTable,
 		consolidatedTable,
 		spaceStatsTable,

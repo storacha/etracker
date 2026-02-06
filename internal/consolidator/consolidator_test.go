@@ -83,7 +83,6 @@ func TestValidateRetrievalReceipt(t *testing.T) {
 	// Create a consolidator instance to test the validation context it creates works as expected
 	c, err := New(
 		consolidatorID,
-		"test",
 		nil,
 		nil,
 		nil,
