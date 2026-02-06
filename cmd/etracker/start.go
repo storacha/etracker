@@ -114,14 +114,14 @@ func init() {
 
 	startCmd.Flags().Int(
 		"consolidation-interval",
-		12*60*60,
+		60*60,
 		"Interval in seconds between consolidation runs",
 	)
 	cobra.CheckErr(viper.BindPFlag("consolidation_interval", startCmd.Flags().Lookup("consolidation-interval")))
 
 	startCmd.Flags().Int(
 		"consolidation-batch-size",
-		100,
+		200,
 		"Number of records to process in each consolidation batch",
 	)
 	cobra.CheckErr(viper.BindPFlag("consolidation_batch_size", startCmd.Flags().Lookup("consolidation-batch-size")))
