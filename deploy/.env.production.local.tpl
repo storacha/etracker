@@ -13,13 +13,13 @@ if [ "$TF_WORKSPACE" == "forge-prod" ]; then
 
   TRUSTED_AUTHORITIES="did:web:up.forge.storacha.network"
 elif [ "$TF_WORKSPACE" == "forge-test" ]; then
-  STORAGE_PROVIDER_TABLE_NAME="forge-test-upload-api-storage-provider"
+  STORAGE_PROVIDER_TABLE_NAME="forge-test-w3infra-storage-provider"
   STORAGE_PROVIDER_TABLE_REGION="us-west-2"
 
-  CUSTOMER_TABLE_NAME="forge-test-upload-api-customer"
+  CUSTOMER_TABLE_NAME="forge-test-w3infra-customer"
   CUSTOMER_TABLE_REGION="us-west-2"
 
-  CONSUMER_TABLE_NAME="forge-test-upload-api-consumer"
+  CONSUMER_TABLE_NAME="forge-test-w3infra-consumer"
   CONSUMER_TABLE_REGION="us-west-2"
   CONSUMER_CONSUMER_INDEX_NAME="consumer"
   CONSUMER_CUSTOMER_INDEX_NAME="customer"

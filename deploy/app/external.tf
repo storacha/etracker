@@ -1,11 +1,11 @@
 locals {
-    storage_provider_table_name = "${terraform.workspace == "forge-test" ? "forge-test-upload-api-storage-provider" : (terraform.workspace == "forge-prod" ? "forge-prod-upload-api-storage-provider" : "staging-warm-upload-api-storage-provider")}"
+    storage_provider_table_name = "${terraform.workspace == "forge-test" ? "forge-test-w3infra-storage-provider" : (terraform.workspace == "forge-prod" ? "forge-prod-upload-api-storage-provider" : "staging-warm-upload-api-storage-provider")}"
     storage_provider_table_region = "${(terraform.workspace == "forge-prod" || terraform.workspace == "forge-test") ? "us-west-2" : "us-east-2"}"
 
-    customer_table_name = "${terraform.workspace == "forge-test" ? "forge-test-upload-api-customer" : (terraform.workspace == "forge-prod" ? "forge-prod-upload-api-customer" : "staging-warm-upload-api-customer")}"
+    customer_table_name = "${terraform.workspace == "forge-test" ? "forge-test-w3infra-customer" : (terraform.workspace == "forge-prod" ? "forge-prod-upload-api-customer" : "staging-warm-upload-api-customer")}"
     customer_table_region = "${(terraform.workspace == "forge-test" || terraform.workspace == "forge-prod") ? "us-west-2" : "us-east-2"}"
 
-    consumer_table_name = "${terraform.workspace == "forge-test" ? "forge-test-upload-api-consumer" : (terraform.workspace == "forge-prod" ? "forge-prod-upload-api-consumer" : "staging-warm-upload-api-consumer")}"
+    consumer_table_name = "${terraform.workspace == "forge-test" ? "forge-test-w3infra-consumer" : (terraform.workspace == "forge-prod" ? "forge-prod-upload-api-consumer" : "staging-warm-upload-api-consumer")}"
     consumer_table_region = "${(terraform.workspace == "forge-test" || terraform.workspace == "forge-prod") ? "us-west-2" : "us-east-2"}"
 }
 
