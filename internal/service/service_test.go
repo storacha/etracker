@@ -244,7 +244,7 @@ func TestGetAccountEgress(t *testing.T) {
 		require.ErrorAs(t, err, &periodErr)
 	})
 
-	t.Run("returns period not acceptable error when period exceeds 365 days", func(t *testing.T) {
+	t.Run("returns period not acceptable error when period exceeds 366 days", func(t *testing.T) {
 		accountDID := testutil.RandomDID(t)
 		space := testutil.RandomDID(t)
 
@@ -266,7 +266,7 @@ func TestGetAccountEgress(t *testing.T) {
 		}
 
 		from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-		to := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC) // 366 days
+		to := time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC) // 367 days
 		period := &Period{From: from, To: to}
 
 		result, err := svc.GetAccountEgress(context.Background(), accountDID, nil, period)
@@ -275,7 +275,7 @@ func TestGetAccountEgress(t *testing.T) {
 		require.Nil(t, result)
 		var periodErr ErrPeriodNotAcceptable
 		require.ErrorAs(t, err, &periodErr)
-		assert.Contains(t, periodErr.msg, "365 days")
+		assert.Contains(t, periodErr.msg, "366 days")
 	})
 
 	t.Run("successfully returns empty result for account with no spaces", func(t *testing.T) {

@@ -265,7 +265,7 @@ func (s *service) getAccountStats(
 	return stats, err
 }
 
-const maxPeriodDays = 365
+const maxPeriodDays = 366
 
 // defaultPeriod returns a period from the first day of the last complete month to today
 func defaultPeriod() Period {
