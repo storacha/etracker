@@ -14,15 +14,18 @@
   "secrets": [
     {
       "name": "ETRACKER_METRICS_AUTH_TOKEN",
-      "variable": true
+      "variable": true,
+      "external": false
     },
     {
       "name": "ETRACKER_ADMIN_DASHBOARD_USER",
-      "variable": true
+      "variable": true,
+      "external": false
     },
     {
       "name": "ETRACKER_ADMIN_DASHBOARD_PASSWORD",
-      "variable": true
+      "variable": true,
+      "external": false
     }
   ],
   "tables": [
