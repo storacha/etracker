@@ -10,10 +10,13 @@ import (
 
 var principalMapping = map[string]string{
 	"did:web:registrar.forge.storacha.network":        "did:key:z6MkkfWep96Dphp35s9VqSCD7h7G4R9R1QCR3K9TxpbSRrKf",
+	"did:web:registrar.test.storacha.network":         "did:key:z6MksH3BJWkC7VbdwJYDvSc5amGtzia37zcf3jVNwJbrm6tp",
 	"did:web:staging.registrar.warm.storacha.network": "did:key:z6MkuQ8PfSMrzXCwZkbQv662nZC4FGGm1aucbH256HXXZyxo",
 	"did:web:indexer.forge.storacha.network":          "did:key:z6Mkj8WmJQRy5jEnFN97uuc2qsjFdsYCuD5wE384Z1AMCFN7",
+	"did:web:indexer.test.storacha.network":           "did:key:z6Mkgq6MpoVxPdjyi6NSmvV933jdwAg1SkDL8RG9t9F9KZ4X",
 	"did:web:staging.indexer.warm.storacha.network":   "did:key:z6Mkr4QkdinnXQmJ9JdnzwhcEjR8nMnuVPEwREyh9jp2Pb7k",
 	"did:web:up.forge.storacha.network":               "did:key:z6MkgSttS3n3R56yGX2Eufvbwc58fphomhAsLoBCZpZJzQbr",
+	"did:web:up.test.storacha.network":                "did:key:z6Mkpc2hW6sdhWNNx1BWHTmuCDP6wDBRVUiFnZt1SXMhUR24",
 	"did:web:staging.up.warm.storacha.network":        "did:key:z6MkpR58oZpK7L3cdZZciKT25ynGro7RZm6boFouWQ7AzF7v",
 }
 

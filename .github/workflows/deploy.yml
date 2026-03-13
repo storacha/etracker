@@ -20,6 +20,7 @@ on:
         options:
           - warm-staging
           - forge-production
+          - forge-test
 
 permissions:
   id-token: write # This is required for requesting the JWT
@@ -48,7 +49,7 @@ jobs:
       cloudflare-zone-id: ${{ secrets.WARM_STAGING_CLOUDFLARE_ZONE_ID }}
       cloudflare-api-token: ${{ secrets.WARM_STAGING_CLOUDFLARE_API_TOKEN }}
 
-  # apply prod on successful release, plan otherwise
+  # apply prod and test on successful release, plan otherwise
   forge-production:
     uses: ./.github/workflows/terraform.yml
     with:
@@ -69,3 +70,24 @@ jobs:
       admin-dashboard-password: ${{ secrets.FORGE_PROD_ADMIN_DASHBOARD_PASSWORD }}
       cloudflare-zone-id: ${{ secrets.FORGE_PROD_CLOUDFLARE_ZONE_ID }}
       cloudflare-api-token: ${{ secrets.FORGE_PROD_CLOUDFLARE_API_TOKEN }}
+
+  forge-test:
+    uses: ./.github/workflows/terraform.yml
+    with:
+      env: forge-test
+      workspace: forge-test
+      network: test
+      did: did:web:etracker.test.storacha.network
+      client-egress-usd-per-tib: ${{ vars.FORGE_TEST_CLIENT_EGRESS_USD_PER_TIB }}
+      provider-egress-usd-per-tib: ${{ vars.FORGE_TEST_PROVIDER_EGRESS_USD_PER_TIB }}
+      apply: ${{ (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'forge-test') }}
+    secrets:
+      aws-account-id: ${{ secrets.FORGE_TEST_AWS_ACCOUNT_ID }}
+      aws-region: ${{ secrets.FORGE_TEST_AWS_REGION }}
+      region: ${{ secrets.FORGE_TEST_AWS_REGION }}
+      private-key: ${{ secrets.FORGE_TEST_PRIVATE_KEY }}
+      metrics-auth-token: ${{ secrets.FORGE_TEST_METRICS_AUTH_TOKEN }}
+      admin-dashboard-user: ${{ secrets.FORGE_TEST_ADMIN_DASHBOARD_USER }}
+      admin-dashboard-password: ${{ secrets.FORGE_TEST_ADMIN_DASHBOARD_PASSWORD }}
+      cloudflare-zone-id: ${{ secrets.FORGE_TEST_CLOUDFLARE_ZONE_ID }}
+      cloudflare-api-token: ${{ secrets.FORGE_TEST_CLOUDFLARE_API_TOKEN }}
